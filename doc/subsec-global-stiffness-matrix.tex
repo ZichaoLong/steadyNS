@@ -1,0 +1,124 @@
+\subsection{Global Stiffness Matrix}
+Now let us assemble global stiffness matrix by traverse through elements $\{e_k\}_{k=0}^{M-1}$.
+\begin{lstlisting}[caption=GlobalStiffnessMatrix,
+language=C++,keywordstyle=\color{blue},commentstyle=\color{red!80!green!80!blue!80},frame=lines,
+rulesepcolor=\color{red!50!green!50!blue!50},tabsize=2,mathescape=true]
+  /*** super parameters ***/
+  int N,M,d; 
+  double nu;
+  intTensor e, B, P; // e:Mx(d+1), B:N, P:N
+  doubleTensor E, eMeasure; // E:Mx(d+1)xd, eMeasure:M
+  /******/
+  // columns: 0:dN for $\alpha_i$, and dN:dN+M for $\beta_k$
+  C = sparse(d*N+M,d*N+M); 
+
+  for (int k=0; k<M; ++k) 
+    for (int j=0; j<d+1; ++j)
+      if (B[e[k][j]]==4) e[k][j] = P[e[k][j]];
+  // equations derived from boundary conditions
+  for (int i=0; i<N; ++i)
+  {
+    if (P[i]!=-1) 
+      for (int l=0; l<d; ++l)
+      {
+        C[d*i+l][d*i+l] = 1;
+        C[d*i+l][d*P[i]+l] = -1;
+      }
+    if (B[i]==1 || B[i]==2 || B[i]==3) // no degrees of freedom
+      for (int l=0; l<d; ++l) C[d*i+l][d*i+l] = 1;
+  }
+  // coefficients derived from (d*i+l)-th test function $v_l^j$ in $e_k,i=e_k^j$
+  for (int k=0; k<M; ++k) // $e_k$
+  {
+    doubleTensor EET = matmul(E[k],transpose(E[k])); // (d+1)x(d+1)
+    for (int j=0,i; j<d+1; ++j)
+    {
+      i = e[k][j]; 
+      if (B[i]==1 || B[i]==2 || B[i]==3)
+        continue; // no test function $v_l^j$ here
+      for (int l=0; l<d; ++l)
+      {
+        C[d*i+l][d*N+k] -= eMeasure[k]*E[k][j][l];
+        for (int je=0; je<d+1; ++je)
+          C[d*i+l][d*e[k][je]+l] += nu*eMeasure[k]*EET[je][j];
+      }
+    }
+  }
+  // equations derived from $q_k-q_{k-1}$
+  for (int k=1; k<M; ++k) // e[k-1],e[k]
+    for (int j=0; j<d+1; ++j)
+      for (int l=0; l<d; ++l)
+      {
+        C[d*N+k][d*e[k][j]+l] += E[k][j][l];
+        C[d*N+k][d*e[k-1][j]+l] -= E[k-1][j][l];
+      }
+  // uniqueness of p
+  for (int k=0; k<M; ++k) C[d*N+M-1][d*N+k] = 1;
+\end{lstlisting}
+\begin{lstlisting}[caption=RightHandItems,
+language=C++,keywordstyle=\color{blue},commentstyle=\color{red!80!green!80!blue!80},frame=lines,
+rulesepcolor=\color{red!50!green!50!blue!50},tabsize=2,mathescape=true]
+  /*** super parameters ***/
+  int N,M,d; 
+  double nu;
+  intTensor e, B, P; // e:Mx(d+1), B:N, P:N
+  doubleTensor E, eMeasure; // E:Mx(d+1)xd, eMeasure:M
+  doubleTensor Lambda, Gamma, Theta; 
+  // Lambda:nQuadx(d+1), Gamma:nQuadx(d+1), Theta:(d+1)x(d+1)
+  doubleTensor F,U,p; // source force, velocity, pressure
+  // F:Nxd, U:Nxd, p:M
+  /******/
+  // rows should matche columns of global stiffness matrix C
+  rhi = zeros(d*N+M);
+
+
+  // rhi derived from boundary conditions
+  for (int i=0; i<N; ++i)
+  {
+    if (P[i]!=-1)
+      for (int l=0; l<d; ++l)
+        rhi[d*i+l] = 0;
+    if (B[i]==1 || B[i]==2) // inlet and outlet
+    {
+      rhi[d*i+0] = 1;
+      rhi[d*i+1] = 0;
+      rhi[d*i+2] = 0;
+    }
+    if (B[i]==3) // noslip wall
+    {
+      rhi[d*i+0] = 0;
+      rhi[d*i+1] = 0;
+      rhi[d*i+2] = 0;
+    }
+  }
+  // rhi derived from (d*i+l)-th test function $v_l^j$ in $e_k,i=e_k^j$
+  for (int k=0; k<M; ++k)
+  {
+    // deploy Fk,Uk in e[k]
+    doubleTensor Fk = zeros(d,d+1);
+    doubleTensor Uk = zeros(d,d+1);
+    for (int l=0; l<d; ++l)
+      for (int j=0; j<d+1; ++j)
+      {
+        Fk[l][j] = F[e[k][j]][l];
+        Uk[l][j] = U[e[k][j]][l];
+      }
+    doubleTensor EU = matmul(E[k], Uk); // (d+1)x(d+x)
+    double TrEU = trace(EU);
+    doubleTensor EUTheta = matmul(EU,Theta); // (d+1)x(d+1)
+    for (int j=0,i; j<d+1; ++j)
+    {
+      i = e[k][j];
+      if (B[i]==1 || B[i]==2 || B[i]==3)
+        continue; // no test function $v_l^j$ here
+      for (int l=0; l<d; ++l)
+        for (int je=0; je<d+1; ++je)
+          rhi[d*i+l] += eMeasure[k]*
+            (Fk[l][je]*Theta[je][j]
+            -Uk[l][je]*EUTheta[je][j]
+            +0.5*TrEU*Uk[l][je]*Theta[je][j]);
+  }
+  // rhi derived from $q_k-q_{k-1}$: all zeros
+  // rhi derived from uniqueness of p: all zeros
+\end{lstlisting}
+

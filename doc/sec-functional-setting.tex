@@ -1,0 +1,26 @@
+\section{Functional setting}
+We consider the following spaces
+\[V=H_0^1(\Omega)^d,Y=L^2(\Omega)^d,Q=L^2_0(\Omega)=\{q\in L^2(\Omega):\int_\Omega q(x)\ud x=0\}\]
+and define the continuous bilinear forms $a(\cdot,\cdot),d(\cdot,\cdot)$ on $V\times V,V\times Q$ 
+respectively by
+\[
+  \begin{split}
+    a(u,v)&=\nu(\nabla u,\nabla v),\forall u,v\in V\\
+    d(v,q)&=(q,\nabla\cdot v),\forall (v,q)\in(V,Q).
+  \end{split}
+  \]
+Moreover, we define the trilinear form
+\[b(u,v,w)=((u\cdot\nabla)v,w)+\frac{1}{2}((\nabla\cdot u)v,w)=
+\frac{1}{2}((u\cdot\nabla)v,w)-\frac{1}{2}((u\cdot\nabla)w,v),\forall u,v,w\in V.\]
+For a given $f\in L^2(\Omega)^d$, the variational formulation of problem \eqref{eq:Navier-Stokes} reads as: 
+find a pair $(u,p)\in(V,Q)$ such that 
+\begin{equation}\label{eq:variational-form}
+  a(u,v)+d(u,q)-d(v,p)+b(u,u,v)=(f,v),\forall (v,q)\in(V,Q).
+\end{equation}
+We denote the comforming finite element space pair as $(V_h,Q_h)$, 
+and define the iterative solution $(u^n_h,p^n_h)\in(V_h,Q_h)$ of Stokes iterative method such that
+\begin{equation}\label{eq:discrete-variational}
+  a(u_h^n,v)-d(v,p^n_h)+d(u_h^n,q)+b(u_h^{n-1},u_h^{n-1},v)=(f,v),\forall (v,q)\in(V_h,Q_h),
+\end{equation}
+for $n=1,\cdots$
+

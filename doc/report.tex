@@ -1,0 +1,87 @@
+\documentclass{article}
+
+
+\usepackage{arxiv}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+
+
+%% add by zlong
+\usepackage{amsfonts,amssymb}
+%\usepackage{amsthm}
+\usepackage{amsmath,amsxtra,bm}
+\usepackage{listings}
+\renewcommand\lstlistingname{Algorithm}
+\usepackage{xcolor}
+\usepackage{amsbsy}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{multirow}
+\graphicspath{{fig/}}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{proposition}{Propositin}[section]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{remark}{Remark}[section]
+\newenvironment{proof}{\textit{Proof:}}{\hfill$\square$\\}
+\newcommand{\ud}{\mathrm{d}}
+\newcommand{\kpoly}{\mathcal{P}}
+\newcommand{\pd}{\partial}
+\newcommand{\mr}{\mathbb{R}}
+\newcommand{\mz}{\mathbb{Z}}
+\newcommand{\mn}{\mathbb{N}}
+\DeclareMathOperator*{\st}{s.t.}
+\DeclareMathOperator*{\tr}{Tr}
+%\usepackage{titlesec}
+%\titleformat{\section}[block]{\bfseries}{}{1em}{}[]
+%\titleformat{\subsection}[block]{\bfseries}{\arabic{section}.\arabic{subsection}}{1em}{}[]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{Finite Element Methods for Steady Incompressible Navier-Stokes Equations}
+
+
+\author{
+  Zichao Long \\
+  School of Mathematical Sciences \\
+  Peking University\\
+  \texttt{zlong@pku.edu.cn}
+}
+%\date{}
+\begin{document}
+
+\maketitle
+
+\input{sec-introduction}
+\input{sec-functional-setting}
+
+\section{Discrete Setting}
+\input{subsec-data-structure}
+\input{subsec-discrete-space}
+\input{subsec-linear-equations}
+\input{subsec-basis-function}
+
+\section{Stiffness Matrix}
+\input{subsec-element-stiffness-matrix}
+\input{subsec-global-stiffness-matrix}
+
+
+
+
+
+
+
+
+
+
+\bibliographystyle{unsrt}  
+\bibliography{ref}
+\end{document}

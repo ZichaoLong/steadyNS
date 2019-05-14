@@ -1,0 +1,22 @@
+\section{Introduction}
+In this report, we consider Stokes iterative finite element method\cite{xu2013some} 
+for steady incompressible Navier-Stokes equations\eqref{eq:Navier-Stokes} 
+with a not so high Reynolds number:
+\begin{equation}\label{eq:Navier-Stokes}
+  \left\{
+    \begin{array}{ll}
+      -\nu\Delta u+(u\cdot\nabla)u+\nabla p=f, & \text{in } \Omega, \\
+      \nabla\cdot u=0,                         & \text{in } \Omega, \\
+      \int_\Omega p\ud x = 0,                 & \text{in } \Omega, \\
+      u = u_0,                                  & \text{on } \pd\Omega.
+    \end{array}
+    \right.
+\end{equation}
+The steady incompressible Navier-Stokes equations describes 
+a steady flow of the incompressible viscous Newtonian fluid 
+in a bounded domain $\Omega\subset\mr^d(d=2,3)$. 
+For more about details and convergence analysis of the 
+Stokes, Newton and Oseen methods, 
+we recommend readers refer to \cite{xu2013some,he2015stability}
+\cite[Chapter~6]{john2016finite}.
+
