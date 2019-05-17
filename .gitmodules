@@ -1,0 +1,3 @@
+[submodule "steadyNS/cpp/ASTen"]
+	path = steadyNS/cpp/ASTen
+	url = git@admin.cluster-bicmr.com:zlong/ASTen.git

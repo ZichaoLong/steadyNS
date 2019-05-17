@@ -6,6 +6,7 @@ import gmsh
 import math
 import numpy as np
 import sys
+import steadyNS
 
 d = 2;
 maxx = 16;
@@ -114,6 +115,7 @@ factory.synchronize()
 
 #%% construct planesurface
 PlaneSurfaceTag = factory.addPlaneSurface([BoxCurveLoopTag,]+CurveLoopTags)
+WholeDomainTag = PlaneSurfaceTag
 PhysicalPlaneSurface = 100
 model.addPhysicalGroup(dim=2, tags=[PlaneSurfaceTag], tag=PhysicalPlaneSurface)
 model.setPhysicalName(dim=2, tag=PhysicalPlaneSurface, name='PhysicalPlaneSurface')
@@ -124,64 +126,27 @@ model.mesh.generate(2)
 
 # gmsh.write(caseName+'.msh2')
 
-#%% all nodes
-nodeTags,coord = model.mesh.getNodesForPhysicalGroup(dim=2,tag=PhysicalPlaneSurface)
-nodeTags -= 1
-N = len(nodeTags)
-coord = coord.reshape(N,3);
-coord = coord[:,:d]
-argsortNodeTags = nodeTags.argsort()
-coord = coord[argsortNodeTags]
-B = np.zeros(N,dtype=int)
+#%% set physical tags
+PhysicalWholeDomain = PhysicalPlaneSurface
+PhysicalInlet = PhysicalInlet
+PhysicalOutlet = PhysicalOutlet
+PhysicalHoleBoundary = PhysicalCylinderBoundary
+#%% set coordinates and node boundaries
+N,coord,B,P = steadyNS.preprocess.nodesPreprocess(d, 
+        PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary)
+steadyNS.preprocess.nodesCheck(d,N,coord,B,P,Cylinders,maxx=16)
 
-#%% inlet and outlet nodes
-InletNodeTags,_ = model.mesh.getNodesForPhysicalGroup(dim=1,tag=PhysicalInlet)
-InletNodeTags -= 1
-OutletNodeTags,_ = model.mesh.getNodesForPhysicalGroup(dim=1,tag=PhysicalOutlet)
-OutletNodeTags -= 1
-B[InletNodeTags] = 1
-B[OutletNodeTags] = 2
+#%% set elements
+_, _, e = model.mesh.getElements(dim=d, tag=WholeDomainTag)
+e = e[0]
+M,e,E,eMeasure = steadyNS.preprocess.elementPreprocess(d, coord, B, P, e)
 
-#%% noslip wall boundary nodes
-NoslipWallNodeTags,_ = model.mesh.getNodesForPhysicalGroup(dim=1,tag=PhysicalCylinderBoundary)
-NoslipWallNodeTags -= 1
-B[NoslipWallNodeTags] = 3
-
-#%% periodic nodes pair
-P = np.zeros(N,dtype=int)-1
-tagMaster, nodesPair, affineTransform = model.mesh.getPeriodicNodes(1,3)
-nodesPair = np.array(nodesPair)
-nodesPair -= 1
-nodesPair = nodesPair[B[nodesPair[:,0]]==0]
-P[nodesPair[:,0]] = nodesPair[:,1]
-for i in range(N):
-    if P[i]!=-1:
-        if P[P[i]]!=-1:
-            P[i] = P[P[i]]
-assert(np.all(P[P[P!=-1]]==-1))
-B[P!=-1] = 4
-B[P[P!=-1]] = 5
-
-#%% check period nodes
-print("period")
-print(sum(B==4))
-print(coord[B==4])
-print("period source")
-print(sum(B==5))
-print(coord[B==5])
-#%% check inlet,outlet,noslipwall nodes
-print(np.linalg.norm(coord[np.abs(coord[:,0])<1e-10]-coord[B==1]))
-print(np.linalg.norm(coord[np.abs(coord[:,0]-maxx)<1e-10]-coord[B==2]))
-BC = np.ndarray(N,dtype=bool)
-BC[:] = False
-for cylinder in Cylinders:
-    BCtmp = np.abs((coord[:,0]-cylinder['x'])**2+(coord[:,1]-cylinder['y'])**2-(cylinder['d']/2)**2)<1e-10
-    BC = BC | BCtmp
-print(np.linalg.norm(coord[BC]-coord[B==3]))
-#%% all 2d element
-elementTypes, elementTags, nodeTags = model.mesh.getElements(dim=2, tag=PlaneSurfaceTag)
-nodeTags = nodeTags[0].reshape(-1,d+1)
-M = len(nodeTags)
+#%% set barycentric coordinate
+w,Lambda,Gamma,Theta = steadyNS.preprocess.BarycentricCoord(d)
+print("w",w)
+print("Lambda\n",Lambda)
+print("Gamma\n", Gamma)
+print("Theta\n", Theta)
 
 #%%
 if len(sys.argv)<=1:
