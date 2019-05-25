@@ -1,21 +1,22 @@
 \subsection{Discrete Space}
-\textbf{Velocity Field $u$} is discreted by linear element, with 1 degrees of freedom per node. 
+\textbf{Velocity Field $u$} is discreted by P2 element, 
+with 1 degrees of freedom per node and 1 degrees of freedom per edge.
 The discrete function space $V_h\subset V$ can be writen as
 \begin{equation}\label{eq:u-space}
-  V_h=\{\alpha_0v_0+\alpha_1v_1+\cdots+\alpha_{N-1}v_{N-1}:\alpha_i\}
+  V_h=\{\alpha_0v_0+\alpha_1v_1+\cdots+\alpha_{N+NE-1}v_{N+NE-1}:\alpha_i\}
 \end{equation}
-subject to that, for all $i\in\{0,\cdots,N-1\}$
+subject to that, for all $i\in\{0,\cdots,N+NE-1\}$
 \begin{equation}\label{eq:u-constraint}
   \alpha_i=\left\{
   \begin{array}{ll}
     (1,0,0)^\top \text{ or } (1,0)^\top & \text{if } B_i=1\text{ or }2 \\
     (0,0,0)^\top \text{ or } (0,0)^\top & \text{if } B_i=3 \\
-    \alpha_j & \text{if } B_i=4 \text{ and } P_i=j \text{ i.e. } A_j \text{ is source node of } A_i
+    \alpha_j & \text{if } B_i=4 \text{ and } P_i=j
   \end{array}
   \right.
 \end{equation}
 where $\alpha_i\in\mr^d$ and $v_i:\Omega\to\mr$ is a 
-piecewise linear function such that $v_i(A_i)=1,v_i(A_j)=0,\forall j\neq i$.
+quadratic function such that $v_i(A_i)=1,v_i(A_j)=0,\forall j\neq i$.
 To construct the space of test function $v$, we would simply change the first condition in 
 Eq.\eqref{eq:u-constraint} "$\alpha_i=(1,0,0)^\top \text{ or } (1,0)^\top \text{ if } B_i=1\text{ or }2$" to 
 "$\alpha_i=(0,0,0)^\top \text{ or } (0,0)^\top \text{ if } B_i=1\text{ or }2$".
@@ -25,12 +26,12 @@ with 1 degrees of freedom per element. Therefore, the space $Q_h\subset Q$ reads
 \begin{equation}\label{eq:p-space}
   Q_h=\{\beta_0q_0+\beta_1q_1+\cdots+\beta_{L-1}q_{M-1}:\beta_i\}
 \end{equation}
-subject to $\sum_{k=0}^{M-1}\beta_k=0$, where $\beta_k\in\mr$ and $q_k:\Omega\to\mr$,
+subject to $\sum_{k=0}^{M-1}|e_k|\beta_k=0$, where $\beta_k\in\mr$ and $q_k:\Omega\to\mr$,
 \[
   q_k(x)=\left\{
     \begin{array}{ll}
-      \frac{1}{|e_k|} & \text{ if } x\in e_k \\
-      0               & \text{ else}
+      1 & \text{ if } x\in e_k \\
+      0 & \text{ else}
     \end{array}
     \right..
   \]

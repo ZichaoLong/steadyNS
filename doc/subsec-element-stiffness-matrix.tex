@@ -25,7 +25,7 @@ It is easy to know that for $x\in e_k$, $f_h(x),u_h(x)$ can be represented by
 barycentric coordinates $\lambda(x)\in\mr^{d\times1}$
 \[f_h(x)=F_k\cdot\lambda(x),u_h(x)=U_k\cdot\lambda(x)\]
 and so do $u_h^{n-1},u_h^n$. It is also apparently that
-$\nabla u_h(x)\in\mr^{d\times d}$ and as a consequence of Eq.\eqref{eq:nabla-barycentric-coordinate} we know that
+$\nabla u_h(x)\in\mr^{d\times d}$ and as a consequence of Eq we know that
 \begin{equation*}
   \begin{split}
   \nabla u_h(x)&=\sum_{j=0}^d\alpha_{i_j}\nabla\lambda^j(x)=\sum_{j=0}^d\alpha_{i_j}
@@ -113,7 +113,7 @@ By using Eq.\eqref{eq:u-gradient}, for $l=0,\cdots,d-1,j=0,\cdots,d$ we obtain
 \paragraph{$\bm{-\int_{e_k}p_h^n(x)\nabla\cdot v^j_l(x)\ud x}$}
 It is easy to see
 \begin{equation}
-  \int_{e_k}p_h^n(x)\nabla\cdot v^j_l(x)\ud x=|e_k|\beta_k^n\tr(\nabla v^j_l)=|e_k|\beta_k^nE_k[j,l] 
+  \int_{e_k}p_h^n(x)\nabla\cdot v^j_l(x)\ud x=\beta_k^n\tr(\nabla v^j_l)=\beta_k^nE_k[j,l] 
 \end{equation}
 \paragraph{$\bm{\int_{\Omega}(q_k(x)-q_{k-1}(x))\nabla\cdot u_h^n(x)\ud x=0}$}
 \begin{equation}

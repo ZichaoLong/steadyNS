@@ -1,0 +1,116 @@
+\subsection{Integral of Some Polynomials}
+From now on, we will draw the basic conclusions for local stiffness matrix. 
+Consider two quadratic vector functions $u,v$ and a constant function $p\in\mr$ on element $e$.
+In this case, $u,v$ can be writen as $u,v\in\mr^{(d+1)(d+2)/2\times3}$.
+Before deriving these basic conclusions, we would like to introduce a few basic new notations:
+we use $\Lambda_n\in\mr^{\text{nQuad}\times (d+1)}$ to represent the $n$th-order quadrature points, 
+and $W_n\in\mr^{\text{nQuad}}$ the corresponding weight.
+$\lambda_2(x)\in\mr^{(d+1)(d+2)/2},
+\nabla \lambda_2(x)\in\mr^{(d+1)(d+2)/2\times d},
+x\in\{\Lambda_n[i]:i=0,\cdots,\text{nQuad}\}$ 
+will be pre-computed and stored in the tensors 
+$\Gamma_n\in\mr^{\text{nQuad}\times(d+1)(d+2)/2},
+\Theta_n^e\in\mr^{\text{nQuad}\times(d+1)(d+2)/2\times d}$
+where the value of $\Theta^e_n$ is depend on the element geometry $e$.
+Then the funciton value and the $1$st-order derivative of $u$ at points $\Lambda_n[i]$ can be represented as
+\[u(\Lambda_n[i])=\sum_j \Gamma_n[i,j]u[j],
+\nabla_{l'} u(\Lambda_n[i])=\sum_j \Theta_n^e[i,j,l']u[j],l'=0,\cdots,d-1\]
+In the case of that $v$ is a basis function, i.e. all the element of 
+$v$ is zero except $v[j_0,l]=1$.
+We denote this function as $v^{j_0,l}$.
+\begin{enumerate}
+  \item $4$th-order
+    \begin{equation}\label{eq:integral-uv}
+      \begin{split}
+        \bm{\int_e u\cdot v\ud x} &= |e| \sum_i W_4[i]
+        \cdot u(\Lambda_4[i])\cdot v(\Lambda_4[i]) \\
+        &= |e|\sum_{i,l,j_1,j_2}W_4[i]\cdot\Gamma_4[i,j_1]u[j_1,l]
+        \cdot \Gamma_4[i,j_2]v[j_2,l]
+      \end{split}
+    \end{equation}
+    \[
+      \begin{split}
+        \bm{\int_e u\cdot v^{j_0,l}\ud x} &= |e| \sum_{i,j_1,j_2} W_4[i]
+        \cdot\Gamma_4[i,j_1]u[j_1,l]\cdot\Gamma_4[i,j_2]v[j_2,l] \\
+        &= |e|\sum_{j_1}\big(\sum_{i} W_4[i]\Gamma_4[i,j_0]\Gamma_4[i,j_1]\big) 
+        \cdot u[j_1,l] \\
+        &= |e| \cdot VU_{4s}[j_0]\cdot u[:,l]
+      \end{split}
+    \]
+    where $VU_{4s}\in\mr^{(d+1)(d+2)/2\times(d+1)(d+2)/2}$ is independent with $e$
+    \[
+      VU_4[i,j_0,j_1]=W_4[i]\Gamma_4[i,j_0]\Gamma_4[i,j_1],
+      VU_{4s}[j_0,j_1]=\sum_iVU_4[i,j_0,j_1]
+    \]
+
+  \item $5$th-order
+    \[
+      \begin{split}
+        \bm{\int_e v^{j_0,l}(x)\cdot(u(x)\cdot\nabla)u(x)\ud x}
+        &= |e|\sum_i W_5[i]\cdot v^{j_0,l}(\Lambda_5[i]) \cdot 
+        (u(\Lambda_5[i])\cdot\nabla)u^l(\Lambda_5[i]) \\
+        &= |e|\sum_{i,j_1,l',j_2} W_5[i] \cdot \Gamma_5[i,j_0] \cdot 
+        \big(\Gamma_5[i,j_1]u[j_1,l']\Theta_5^e[i,j_2,l']u[j_2,l]\big) \\
+        &= |e|\sum_{l',j_1,j_2}\sum_iVU_5[i,j_0,j_1]\Theta_5^e[i,j_2,l']\cdot 
+        u[j_1,l']u[j_2,l]
+      \end{split}
+    \]
+    where $VU_5\in\mr^{\text{nQaud}\times((d+1)(d+2)/2)^2}$ is independent with $e$
+    \[VU_5[i,j_0,j_1]=W_5[i]\Gamma_5[i,j_0]\Gamma_5[i,j_1]\]
+
+  \item $5$th-order
+    \[
+      \begin{split}
+        \bm{\int_e(\nabla\cdot u(x))v^{j_0,l}(x)\cdot u(x)\ud x}
+        &= |e|\sum_i W_5[i]\cdot (\nabla\cdot u(\Lambda_5[i]))\cdot 
+        v^{j_0,l}(\Lambda_5[i]) \cdot u(\Lambda_5[i]) \\
+        &= |e|\sum_{i,j_1,l',j_2} W_5[i]\cdot \Theta_5^e[i,j_1,l'] u[j_1,l'] 
+        \cdot \Gamma_5[i,j_0] \cdot \Gamma_5[i,j_2]u[j_2,l] \\
+        &= |e|\sum_{i,j_1,l',j_2} W_5[i]\Gamma_5[i,j_0]\Gamma_5[i,j_2]
+        \cdot\Theta_5^e[i,j_1,l']\cdot u[j_1,l']u[j_2,l] \\
+        &= |e|\sum_{l',j_1,j_2}\sum_i VU_5[i,j_0,j_2]\Theta_5^e[i,j_1,l']
+        \cdot u[j_1,l']u[j_2,l] 
+      \end{split}
+    \]
+    It is very similar to $\int_{e}v^{j_0,l}(x)\cdot(u(x)\cdot\nabla)u(x)\ud x$ and algorithms should be carefully designed here
+    \[
+      \begin{split}
+        \int_e v^{j_0,l}(x)\cdot(u(x)\cdot\nabla)u(x)\ud x
+        &= |e|\sum_{l',j_1,j_2}\sum_iVU_5[i,j_0,j_1]\Theta_5^e[i,j_2,l']\cdot 
+        u[j_1,l']u[j_2,l] \\
+        \int_e(\nabla\cdot u(x))v^{j_0,l}(x)\cdot u(x)\ud x
+        &= |e|\sum_{l',j_1,j_2}\sum_i VU_5[i,j_0,j_2]\Theta_5^e[i,j_1,l']
+        \cdot u[j_1,l']u[j_2,l] 
+      \end{split}
+    \]
+
+  \item $2$nd-order
+    \[
+      \begin{split}
+        \bm{\int_e \nabla u:\nabla v^{j_0,l}\ud x} &= |e| \sum_i W_2[i]\cdot 
+        \nabla u(\Lambda_2[i]) : \nabla v^{j_0,l}(\Lambda_2[i]) \\
+        &= |e| \sum_{i,j_1,l'} W_2[i]\cdot 
+        \Theta_2^e[i,j_1,l']u[j_1,l] \cdot \Theta_2^e[i,j_0,l'] \\
+        &= |e| \sum_{j_1} \sum_{i,l'}W_2[i]\Theta_2^e[i,j_0,l']\Theta_2^e[i,j_1,l'] 
+        \cdot u[j_1,l]
+      \end{split}
+    \]
+    for Stokes iteration, $\sum_{i,l'}W_2[i]\Theta_2^e[i,j_0,l']\Theta_2^e[i,j_1,l']$
+    would be calculated only once.
+
+  \item $1$st-order
+    \[
+      \begin{split}
+        \bm{\int_e p\nabla\cdot v^{j_0,l}\ud x} &= |e| \sum_i W_1[i]\cdot p\cdot 
+        \nabla v^{j_0,l}(\Lambda_1[i]) \\
+        &= |e| p\sum_i W_1[i] \Theta_1[i,j_0,l]
+      \end{split}
+    \]
+    \[
+      \begin{split}
+        \bm{\int_e q\nabla\cdot u\ud x} &= |e| \sum_i qW_1[i]\cdot 
+        \nabla \cdot u(\Lambda_1[i]) \\
+        &= |e| \sum_{j,l}\sum_{i} qW_i[i]\Theta_1[i,j,l]\cdot u[j,l]
+      \end{split}
+    \]
+\end{enumerate}

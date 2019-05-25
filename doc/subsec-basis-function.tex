@@ -1,5 +1,5 @@
 \subsection{Basis Function}
-Before building up the linear system of solution variables $\{\alpha_i^n\}_{i=0}^{N-1}$ and $\{\beta_i^n\}_{i=0}^{M-1}$,
+Before building up the linear system of solution variables $\{\alpha_i^n\}_{i=0}^{N+NE-1}$ and $\{\beta_i^n\}_{i=0}^{M-1}$,
 we should introduce the close form of integral of polynomials,
 in a single triangle/tetrahedron element $e$. 
 This would be done by means of barycentric coordinate and quadrature points.
@@ -17,9 +17,9 @@ $x\in\mr^{d\times1}$, can be calculated by applying the following linear transfo
   \end{array}
   \right]^{-1}
   \left[\begin{array}{c}
-  1 \\
-  x
-\end{array}\right]
+    1 \\
+    x
+  \end{array}\right]
 \]
 where the transformation matrix, in which $e^j\in\mr^{d\times1}$ stands for the 
 $x$-$y$-$z$ (or $x$-$y$) coordinate of 
@@ -50,122 +50,47 @@ $j$-th$(j=0,\cdots,d)$ nodes of $e$, reads as follows:
 \]
 Soon we deduce that the measure of $e$, i.e. area for $2D$ case and volumn for $3D$ case, 
 is $|e|=\frac{1}{d!}|\det([1;e])|$.
-As a simple example to illustrate barycentric coordinate, 
-consider a \textbf{linear function} $g:e\to\mr$, and then
+It is important to introduce the gradient of $\lambda\in\mr^{(d+1)\times1}$
+\[
+  \nabla \lambda = E^e
+  \triangleq\left(\left[\begin{array}{c} 1 \\ e \end{array}\right]^{-1}\right)[:,1\text{:end}]
+    \]
+  As a simple example to illustrate barycentric coordinate, 
+we consider linear function and quadratic function in $e$.
+
+\paragraph{P1: linear function} $g:e\to\mr$, and then
 \[g(x)=g({\textstyle\sum_{j=0}^{d}}\lambda^j(x)e^j)=\sum_{j}\lambda^j(x)g(e^j).\]
-That is to say, $\{\lambda^j\}$ is the basis functions of piecewise linear element in element $e$.
+That is to say, $\{\lambda^j\}$ is the basis functions of piecewise linear element in element $e$. 
+Rewrite $g(x)$ as $g=[g(e^j)]_{j=0}^d\in\mr^{1\times(d+1)}$, then 
+\[g(x)=g\cdot\lambda(x),\nabla g(x)=g\cdot E^e\in\mr^{1\times d}\]
 Specifically, for $g=\lambda^j$ we would have $\lambda^j(\sum_{j=0}^{d}\lambda^j(x)e^j)=\lambda^j(x)$.
 
-The gradient of $g$, which is constant in $e$, is given by
-\[\mr^{1\times d}\owns\nabla g=\sum_{j}g(e^j)\nabla(\lambda^j(x))
+\paragraph{P2: quadratic function} $g:e\to\mr$, 
+$g$ is determined uniquely by $(d+1)(d+2)/2$ points in 
+$e\in\mn^{(d+1)(d+2)/2}$, 
+\[g(x)=\sum_{j=0}^dg(e^j)2\lambda^j(x)(\lambda^j(x)-\frac12)+
+\sum_{j_2\leq j_1}g\big(\frac{e^{j_1}+e^{j_2}}2\big)4\lambda^{j_1}(x)\lambda^{j_2}(x)\]
+and for convenience of notations we rewrite $g$ as $g\in\mr^{(d+1)(d+2)/2}$, 
+\begin{equation}\label{eq:quadratic-freedom}
+  g[j_1,j_2]=g[(j_1-1)j_1/2+j_2]=g(\frac{e^{j_1}+e^{j_2}}2), 0\leq j_2\leq j_1\leq d+1
+\end{equation}
+and $\lambda_2$ the basis function of P2 element:
+\[
+  \lambda_2^{(j_1-1)j_1/2+j_2}=\lambda_2^{j_1,j_2}=\left\{
+  \begin{array}{ll}
+    2\lambda^j(\lambda^j-\frac12) & \text{if } j_1=j_2=j \\
+    4\lambda^{j_1}\lambda^{j_2}   & \text{if } j_2\leq j_1
+  \end{array}
+  \right., 0\leq j_2\leq j_1\leq d+1
 \]
-where $\nabla \lambda^j$ depends only on the geometry of $e$:
-\begin{equation}\label{eq:nabla-barycentric-coordinate}
-  \mr^{1\times d}\owns\nabla(\lambda^j(x))=\nabla(E[j]\cdot x)=E[j],
-  E\triangleq\left(\left[\begin{array}{c} 1 \\ e \end{array}\right]^{-1}\right)[:,1\text{:end}]
-\end{equation}
-
-\paragraph{Quadrature Points}
-A material fact is that, the integral of a polynomial can be easily calculated, 
-in the sense of up to a multiplycative constant $|e|$,
-by sum up the function values at quadrature points\cite{chen2008ifem}.
-Thus, given the propriate quadrature points and the corresponding 
-barycentric coordinate $\lambda$ and weight $W$
-(see Tab.\ref{tab:quadrature-points-2d} and Tab.\ref{tab:quadrature-points-3d}),
-the integral of an n-th order(n=1,2,3) polynomial $g(x)$ can be writen as 
-\begin{equation}\label{eq:quadrature-points-integral}
-  \int_e g(x)\ud x=|e|\sum_{i=0}^{\text{nQuad}}W_ig(\sum_{j=0}^{d}\lambda_i^je^j)
-\end{equation}
-\begin{table}[ht]
-  \centering
-  \caption{2D-case: Quadrature Points for polynomials with Order 1,2,3, 
-  where $\lambda_i^j$ is $j$-th barycentric coordinate of $i$-th quadrature point equipment with a weight $W_i$. 
-  In this report, only Order 2 will be used.}
-  \label{tab:quadrature-points-2d}
-  \begin{tabular}{l|l|l}
-    \hline
-    Order 1, nQuad 1
-    & $W=1$
-    & $\lambda=[1/3,1/3/,1/3]$ \\
-    \hline
-    Order 2, nQuad 3 
-    & $W=\left[
-      \begin{array}{c}
-        1/3 \\
-        1/3 \\
-        1/3
-      \end{array}\right]$
-    & $\lambda=\left[
-      \begin{array}{ccc}
-2/3, & 1/6, & 1/6 \\
-1/6, & 2/3, & 1/6 \\
-1/6, & 1/6, & 2/3
-      \end{array}
-      \right]$ \\
-    \hline
-%    Order 3, nQuad 4
-%    & $W = \left[
-%      \begin{array}{c}
-%        -27/48\\
-%        25/48 \\
-%        25/48 \\
-%        25/48
-%      \end{array}\right]$
-%    & $\lambda=\left[
-%      \begin{array}{ccc}
-%        1/3,& 1/3,& 1/3 \\
-%        0.6,& 0.2,& 0.2 \\
-%        0.2,& 0.6,& 0.2 \\
-%        0.2,& 0.2,& 0.6 
-%      \end{array}\right]$ \\
-%    \hline
-  \end{tabular}
-\end{table}
-\begin{table}[ht]
-  \centering
-  \caption{3D-case: Quadrature Points for polynomials with Order 1,2,3,
-  where $\lambda_i^j$ is $j$-th barycentric coordinate of $i$-th quadrature point equipment with a weight $W_i$,
-  The parameters for the case of Order 2 are set as follows:$\alpha = 0.5854101966249685; \beta = 0.138196601125015 $.
-  In this report, only Order 2 will be used.}
-  \label{tab:quadrature-points-3d}
-  \begin{tabular}{l|l|l}
-    \hline
-    Order 1, nQuad 1
-    & $W = 1$
-    & $\lambda = [1/4, 1/4, 1/4, 1/4]$ \\
-    \hline
-    Order 2, nQuad 4
-    & $W=\left[
-      \begin{array}{c}
-        1/4 \\
-        1/4 \\
-        1/4 \\ 
-        1/4
-      \end{array}\right]$
-    &$\lambda=\left[\begin{array}{cccc}
-       \alpha & \beta  & \beta  & \beta \\
-       \beta  & \alpha & \beta  & \beta \\
-       \beta  & \beta  & \alpha & \beta \\
-       \beta  & \beta  & \beta  & \alpha 
-     \end{array}\right]$ \\
-     \hline
-%    Order 3, nQuad 5
-%    & $W=\left[
-%      \begin{array}{c}
-%        -4/5 \\
-%        9/20 \\
-%        9/20 \\
-%        9/20 \\
-%        9/20 
-%      \end{array}\right]$
-%    & $\lambda = \left[\begin{array}{cccc}
-%      1/4 & 1/4 & 1/4 & 1/4 \\
-%      1/2 & 1/6 & 1/6 & 1/6 \\
-%      1/6 & 1/2 & 1/6 & 1/6 \\
-%      1/6 & 1/6 & 1/2 & 1/6 \\
-%      1/6 & 1/6 & 1/6 & 1/2
-%    \end{array}\right]$ \\
-%    \hline
-  \end{tabular}
-\end{table}
-
+thus we have
+\[g(x)=g\cdot\lambda_2(x)\]
+the gradients of the basis funciton can be written as
+\[
+  \nabla\lambda_2^{(j_1-1)j_1/2+j_2}=\nabla\lambda_2^{j_1,j_2}=\left\{
+  \begin{array}{ll}
+    4\lambda^jE^e[j]-E^e[j]                        & \text{if } j_1=j_2=j \\
+    4(\lambda^{j_1}E^e[j_2]+\lambda^{j_2}E^e[j_1]) & \text{if } j_2\leq j_1
+  \end{array}
+  \right., 0\leq j_2\leq j_1\leq d+1
+\]

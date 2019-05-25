@@ -1,5 +1,5 @@
 """
-python cylinders.py clscale caseName x1 y1 r1 x2 y2 r2 ...
+python cylinders.py caseName clscale x1 y1 r1 x2 y2 r2 ...
 """
 #%%
 import gmsh
@@ -8,6 +8,7 @@ import numpy as np
 import sys
 import steadyNS
 
+nu = 0.1
 d = 2;
 maxx = 16;
 maxy = 4;
@@ -134,12 +135,11 @@ PhysicalHoleBoundary = PhysicalCylinderBoundary
 #%% set coordinates and node boundaries
 N,coord,B,P = steadyNS.preprocess.nodesPreprocess(d, 
         PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary)
-steadyNS.preprocess.nodesCheck(d,N,coord,B,P,Cylinders,maxx=16)
 
 #%% set elements
-_, _, e = model.mesh.getElements(dim=d, tag=WholeDomainTag)
-e = e[0]
-M,e,E,eMeasure = steadyNS.preprocess.elementPreprocess(d, coord, B, P, e)
+M,e,E,eMeasure = steadyNS.preprocess.elementPreprocess(d, WholeDomainTag, coord, B, P)
+
+steadyNS.preprocess.Check(coord,B,P,e,Cylinders,maxx=16)
 
 #%% set barycentric coordinate
 w,Lambda,Gamma,Theta = steadyNS.preprocess.BarycentricCoord(d)
@@ -147,6 +147,34 @@ print("w",w)
 print("Lambda\n",Lambda)
 print("Gamma\n", Gamma)
 print("Theta\n", Theta)
+
+#%% set global stiff matrix
+C_NUM = steadyNS.preprocess.countStiffMatData(B,P,e)
+print("non-zero number of C_OO=",C_NUM)
+C = steadyNS.steadyNS.StiffMat(C_NUM,nu,B,P,e,E,eMeasure)
+print("C shape=",C.shape)
+print("C nnz=",C.nnz)
+print("condition number of C=",np.linalg.cond(C.todense()))
+C = C.todense()
+values,vectors = np.linalg.eig(C)
+vectors = np.array(vectors)
+zerovectors = vectors[:,np.abs(values.reshape(-1))<1e-10]
+print(np.linalg.norm(C[:-1,324:]@zerovectors[324:]))
+index = np.ndarray(C.shape[0],dtype=np.bool)
+index[:] = True
+for i in range(N):
+    if (B[i]==1 or B[i]==2 or B[i]==3):
+        for l in range(d):
+            index[d*i+l] = False
+print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
+
+#%% set stiff matrix for poisson equation
+C_NUM = steadyNS.preprocess.countPoisson(B,P,e)
+print("non-zero number of C_OO=",C_NUM)
+C = steadyNS.steadyNS.Poisson(C_NUM,nu,B,P,e,E,eMeasure)
+print("C shape=",C.shape)
+print("C nnz=",C.nnz)
+print("condition number of C=",np.linalg.cond(C.todense()))
 
 #%%
 if len(sys.argv)<=1:

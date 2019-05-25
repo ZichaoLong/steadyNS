@@ -38,7 +38,7 @@ rulesepcolor=\color{red!50!green!50!blue!50},tabsize=2,mathescape=true]
         continue; // no test function $v_l^j$ here
       for (int l=0; l<d; ++l)
       {
-        C[d*i+l][d*N+k] -= eMeasure[k]*E[k][j][l];
+        C[d*i+l][d*N+k] -= E[k][j][l];
         for (int je=0; je<d+1; ++je)
           C[d*i+l][d*e[k][je]+l] += nu*eMeasure[k]*EET[je][j];
       }
@@ -49,8 +49,8 @@ rulesepcolor=\color{red!50!green!50!blue!50},tabsize=2,mathescape=true]
     for (int j=0; j<d+1; ++j)
       for (int l=0; l<d; ++l)
       {
-        C[d*N+k][d*e[k][j]+l] += E[k][j][l];
-        C[d*N+k][d*e[k-1][j]+l] -= E[k-1][j][l];
+        C[d*N+k-1][d*e[k][j]+l] += E[k][j][l];
+        C[d*N+k-1][d*e[k-1][j]+l] -= E[k-1][j][l];
       }
   // uniqueness of p
   for (int k=0; k<M; ++k) C[d*N+M-1][d*N+k] = 1;

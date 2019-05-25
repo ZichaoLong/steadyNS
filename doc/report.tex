@@ -1,8 +1,6 @@
 \documentclass{article}
 
-
 \usepackage{arxiv}
-
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
 \usepackage{hyperref}       % hyperlinks
@@ -15,7 +13,6 @@
 
 %% add by zlong
 \usepackage{amsfonts,amssymb}
-%\usepackage{amsthm}
 \usepackage{amsmath,amsxtra,bm}
 \usepackage{listings}
 \renewcommand\lstlistingname{Algorithm}
@@ -41,6 +38,7 @@
 \newcommand{\mn}{\mathbb{N}}
 \DeclareMathOperator*{\st}{s.t.}
 \DeclareMathOperator*{\tr}{Tr}
+\DeclareMathOperator*{\diag}{diag}
 %\usepackage{titlesec}
 %\titleformat{\section}[block]{\bfseries}{}{1em}{}[]
 %\titleformat{\subsection}[block]{\bfseries}{\arabic{section}.\arabic{subsection}}{1em}{}[]
@@ -70,6 +68,8 @@
 \input{subsec-basis-function}
 
 \section{Stiffness Matrix}
+\input{subsec-quadrature-points}
+\input{subsec-integral-polynomial}
 \input{subsec-element-stiffness-matrix}
 \input{subsec-global-stiffness-matrix}
 

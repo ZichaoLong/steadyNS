@@ -7,7 +7,7 @@ where, with notations of Einstein summation, the $u_h^{n-1},u_h^n,p_h^n$ reads a
 \begin{equation}\label{eq:uf-linear-approximation}
   u_h^{n-1}=\alpha_i^{n-1}v_i,u_h^n=\alpha_i^nv_i,p_h^n=\beta_k^nq_k
 \end{equation}
-The variables to be solved are $\{\alpha_i^n\}_{i=0}^{N-1}$ and $\{\beta_i^n\}_{i=0}^{M-1}$, in each iteration, 
+The variables to be solved are $\{\alpha_i^n\}_{i=0}^{N+NE-1}$ and $\{\beta_i^n\}_{i=0}^{M-1}$, in each iteration, 
 and in this sub-section we will talk about their corresponding equations in analytical form.
 The details on how to construct element stiffness matrix and assemble global stiffness matrix 
 will be introduced later.
@@ -37,8 +37,8 @@ We denote $\alpha^l=[\alpha^l[l']]_{l'=0}^d\in\mr^{d\times1}$ where
         &=\sum_{e_{k}:i\in e_{k}}\nu\int_{e_{k}}\nabla u_h^n(x):\nabla v(x)\ud x-\int_{e_{k}}p_h^n(x)\nabla\cdot v(x)\ud x 
       \end{split}
     \end{equation}
-  \item If $B_i=5$ and $i$ is the source of these nodes $\{j:P_j=i\}$, 
-    then for $v=\alpha\sum_{i'=i\text{ or }i'\in\{j:P_j=i\}}v_{i'}$ the following equation shoudl be satisfied
+  \item If $B_i=-1$ and $i$ is the source of these nodes $\{j:P_j=i\}$, 
+    then for $v=\alpha\sum_{i'=i\text{ or }i'\in\{j:P_j=i\}}v_{i'}$ the following equation should be satisfied
     \begin{equation}\label{eq:equation-testv-period}
       \begin{split}
         &\sum_{e_{k}:i\text{ or }j\in e_{k}}\int_{e_{k}}f(x)\cdot v(x)\ud x
@@ -53,11 +53,12 @@ We denote $\alpha^l=[\alpha^l[l']]_{l'=0}^d\in\mr^{d\times1}$ where
 the additional condition for fixing the constant has to be introduced, 
 i.e. that the integral mean value of the pressure should be vanish: $\int_\Omega p\ud x=0$. Thus we have a additional equation for $\{\beta_i\}$:
 \[
-  \sum_{i=0}^{N-1}\beta_i=0
+  \sum_{i=0}^{N-1}|e_k|\beta_i=0
   \]
+An sparse alternative is simply set $\beta_0=1$ instead of using the above integrate form.
 
-\paragraph{Equations Derived from Test Function $q_k$} The $k$-th($k=1,\cdot,M-1$) test function is $q_k-q_{k-1}$ and 
+\paragraph{Equations Derived from Test Function $q_k$} The $k$-th($k=1,\cdot,M-1$) test function is $|e_{k-1}|q_k-|e_k|q_{k-1}$ and 
 \begin{equation}\label{eq:equation-testq}
-  \int_{\Omega}(q_k(x)-q_{k-1}(x))\nabla\cdot u_h^n(x)\ud x=0
+  \int_{\Omega}(|e_{k-1}|q_k(x)-|e_k|q_{k-1}(x))\nabla\cdot u_h^n(x)\ud x=0
 \end{equation}
 
