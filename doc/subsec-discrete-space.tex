@@ -26,12 +26,12 @@ with 1 degrees of freedom per element. Therefore, the space $Q_h\subset Q$ reads
 \begin{equation}\label{eq:p-space}
   Q_h=\{\beta_0q_0+\beta_1q_1+\cdots+\beta_{L-1}q_{M-1}:\beta_i\}
 \end{equation}
-subject to $\sum_{k=0}^{M-1}|e_k|\beta_k=0$, where $\beta_k\in\mr$ and $q_k:\Omega\to\mr$,
+subject to $\sum_{k=0}^{M-1}\beta_k=0$, where $\beta_k\in\mr$ and $q_k:\Omega\to\mr$,
 \[
   q_k(x)=\left\{
     \begin{array}{ll}
-      1 & \text{ if } x\in e_k \\
-      0 & \text{ else}
+      \frac1{|e_k|} & \text{ if } x\in e_k \\
+                  0 & \text{ else}
     \end{array}
     \right..
   \]

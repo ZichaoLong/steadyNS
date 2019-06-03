@@ -72,25 +72,25 @@ $e\in\mn^{(d+1)(d+2)/2}$,
 \sum_{j_2\leq j_1}g\big(\frac{e^{j_1}+e^{j_2}}2\big)4\lambda^{j_1}(x)\lambda^{j_2}(x)\]
 and for convenience of notations we rewrite $g$ as $g\in\mr^{(d+1)(d+2)/2}$, 
 \begin{equation}\label{eq:quadratic-freedom}
-  g[j_1,j_2]=g[(j_1-1)j_1/2+j_2]=g(\frac{e^{j_1}+e^{j_2}}2), 0\leq j_2\leq j_1\leq d+1
+  g[j_1,j_2]=g[j_1(j_1+1)/2+j_2]=g(\frac{e^{j_1}+e^{j_2}}2), 0\leq j_2\leq j_1\leq d
 \end{equation}
 and $\lambda_2$ the basis function of P2 element:
 \[
-  \lambda_2^{(j_1-1)j_1/2+j_2}=\lambda_2^{j_1,j_2}=\left\{
+  \lambda_2^{j_1(j_1+1)/2+j_2}=\lambda_2^{j_1,j_2}=\left\{
   \begin{array}{ll}
     2\lambda^j(\lambda^j-\frac12) & \text{if } j_1=j_2=j \\
-    4\lambda^{j_1}\lambda^{j_2}   & \text{if } j_2\leq j_1
+    4\lambda^{j_1}\lambda^{j_2}   & \text{if } j_2<j_1
   \end{array}
-  \right., 0\leq j_2\leq j_1\leq d+1
+  \right., 0\leq j_2\leq j_1\leq d
 \]
 thus we have
 \[g(x)=g\cdot\lambda_2(x)\]
 the gradients of the basis funciton can be written as
 \[
-  \nabla\lambda_2^{(j_1-1)j_1/2+j_2}=\nabla\lambda_2^{j_1,j_2}=\left\{
+  \nabla\lambda_2^{j_1(j_1+1)/2+j_2}=\nabla\lambda_2^{j_1,j_2}=\left\{
   \begin{array}{ll}
     4\lambda^jE^e[j]-E^e[j]                        & \text{if } j_1=j_2=j \\
-    4(\lambda^{j_1}E^e[j_2]+\lambda^{j_2}E^e[j_1]) & \text{if } j_2\leq j_1
+    4(\lambda^{j_1}E^e[j_2]+\lambda^{j_2}E^e[j_1]) & \text{if } j_2<j_1
   \end{array}
-  \right., 0\leq j_2\leq j_1\leq d+1
+  \right., 0\leq j_2\leq j_1\leq d
 \]

@@ -1,4 +1,4 @@
-\subsection{Integral of Some Polynomials}
+\subsection{Integral of Some Polynomials in a Element}
 From now on, we will draw the basic conclusions for local stiffness matrix. 
 Consider two quadratic vector functions $u,v$ and a constant function $p\in\mr$ on element $e$.
 In this case, $u,v$ can be writen as $u,v\in\mr^{(d+1)(d+2)/2\times3}$.
@@ -20,7 +20,7 @@ $v$ is zero except $v[j_0,l]=1$.
 We denote this function as $v^{j_0,l}$.
 \begin{enumerate}
   \item $4$th-order
-    \begin{equation}\label{eq:integral-uv}
+    \begin{equation}\label{eq:integral-uv-all}
       \begin{split}
         \bm{\int_e u\cdot v\ud x} &= |e| \sum_i W_4[i]
         \cdot u(\Lambda_4[i])\cdot v(\Lambda_4[i]) \\
@@ -28,7 +28,7 @@ We denote this function as $v^{j_0,l}$.
         \cdot \Gamma_4[i,j_2]v[j_2,l]
       \end{split}
     \end{equation}
-    \[
+    \begin{equation}\label{eq:integral-uv}
       \begin{split}
         \bm{\int_e u\cdot v^{j_0,l}\ud x} &= |e| \sum_{i,j_1,j_2} W_4[i]
         \cdot\Gamma_4[i,j_1]u[j_1,l]\cdot\Gamma_4[i,j_2]v[j_2,l] \\
@@ -36,7 +36,7 @@ We denote this function as $v^{j_0,l}$.
         \cdot u[j_1,l] \\
         &= |e| \cdot VU_{4s}[j_0]\cdot u[:,l]
       \end{split}
-    \]
+    \end{equation}
     where $VU_{4s}\in\mr^{(d+1)(d+2)/2\times(d+1)(d+2)/2}$ is independent with $e$
     \[
       VU_4[i,j_0,j_1]=W_4[i]\Gamma_4[i,j_0]\Gamma_4[i,j_1],
@@ -44,22 +44,22 @@ We denote this function as $v^{j_0,l}$.
     \]
 
   \item $5$th-order
-    \[
+    \begin{equation}\label{eq:integral-vugu}
       \begin{split}
         \bm{\int_e v^{j_0,l}(x)\cdot(u(x)\cdot\nabla)u(x)\ud x}
         &= |e|\sum_i W_5[i]\cdot v^{j_0,l}(\Lambda_5[i]) \cdot 
         (u(\Lambda_5[i])\cdot\nabla)u^l(\Lambda_5[i]) \\
         &= |e|\sum_{i,j_1,l',j_2} W_5[i] \cdot \Gamma_5[i,j_0] \cdot 
-        \big(\Gamma_5[i,j_1]u[j_1,l']\Theta_5^e[i,j_2,l']u[j_2,l]\big) \\
+        \Gamma_5[i,j_1]u[j_1,l']\Theta_5^e[i,j_2,l']u[j_2,l] \\
         &= |e|\sum_{l',j_1,j_2}\sum_iVU_5[i,j_0,j_1]\Theta_5^e[i,j_2,l']\cdot 
         u[j_1,l']u[j_2,l]
       \end{split}
-    \]
+    \end{equation}
     where $VU_5\in\mr^{\text{nQaud}\times((d+1)(d+2)/2)^2}$ is independent with $e$
     \[VU_5[i,j_0,j_1]=W_5[i]\Gamma_5[i,j_0]\Gamma_5[i,j_1]\]
 
   \item $5$th-order
-    \[
+    \begin{equation}\label{eq:integral-guvu}
       \begin{split}
         \bm{\int_e(\nabla\cdot u(x))v^{j_0,l}(x)\cdot u(x)\ud x}
         &= |e|\sum_i W_5[i]\cdot (\nabla\cdot u(\Lambda_5[i]))\cdot 
@@ -71,9 +71,9 @@ We denote this function as $v^{j_0,l}$.
         &= |e|\sum_{l',j_1,j_2}\sum_i VU_5[i,j_0,j_2]\Theta_5^e[i,j_1,l']
         \cdot u[j_1,l']u[j_2,l] 
       \end{split}
-    \]
+    \end{equation}
     It is very similar to $\int_{e}v^{j_0,l}(x)\cdot(u(x)\cdot\nabla)u(x)\ud x$ and algorithms should be carefully designed here
-    \[
+    \begin{equation}\label{eq:integral-compare-vugu-guvu}
       \begin{split}
         \int_e v^{j_0,l}(x)\cdot(u(x)\cdot\nabla)u(x)\ud x
         &= |e|\sum_{l',j_1,j_2}\sum_iVU_5[i,j_0,j_1]\Theta_5^e[i,j_2,l']\cdot 
@@ -82,10 +82,10 @@ We denote this function as $v^{j_0,l}$.
         &= |e|\sum_{l',j_1,j_2}\sum_i VU_5[i,j_0,j_2]\Theta_5^e[i,j_1,l']
         \cdot u[j_1,l']u[j_2,l] 
       \end{split}
-    \]
+    \end{equation}
 
   \item $2$nd-order
-    \[
+    \begin{equation}\label{eq:integral-gugv}
       \begin{split}
         \bm{\int_e \nabla u:\nabla v^{j_0,l}\ud x} &= |e| \sum_i W_2[i]\cdot 
         \nabla u(\Lambda_2[i]) : \nabla v^{j_0,l}(\Lambda_2[i]) \\
@@ -94,23 +94,23 @@ We denote this function as $v^{j_0,l}$.
         &= |e| \sum_{j_1} \sum_{i,l'}W_2[i]\Theta_2^e[i,j_0,l']\Theta_2^e[i,j_1,l'] 
         \cdot u[j_1,l]
       \end{split}
-    \]
+    \end{equation}
     for Stokes iteration, $\sum_{i,l'}W_2[i]\Theta_2^e[i,j_0,l']\Theta_2^e[i,j_1,l']$
     would be calculated only once.
 
   \item $1$st-order
-    \[
+    \begin{equation}\label{eq:integral-pgv}
       \begin{split}
         \bm{\int_e p\nabla\cdot v^{j_0,l}\ud x} &= |e| \sum_i W_1[i]\cdot p\cdot 
         \nabla v^{j_0,l}(\Lambda_1[i]) \\
         &= |e| p\sum_i W_1[i] \Theta_1[i,j_0,l]
       \end{split}
-    \]
-    \[
+    \end{equation}
+    \begin{equation}\label{eq:integral-qgu}
       \begin{split}
         \bm{\int_e q\nabla\cdot u\ud x} &= |e| \sum_i qW_1[i]\cdot 
         \nabla \cdot u(\Lambda_1[i]) \\
         &= |e| \sum_{j,l}\sum_{i} qW_i[i]\Theta_1[i,j,l]\cdot u[j,l]
       \end{split}
-    \]
+    \end{equation}
 \end{enumerate}

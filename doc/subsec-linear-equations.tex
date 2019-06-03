@@ -51,14 +51,15 @@ We denote $\alpha^l=[\alpha^l[l']]_{l'=0}^d\in\mr^{d\times1}$ where
 
 \paragraph{Equation for Uniqueness of Pressure} Since the pressure $p_h^n$ is determined only up to an additive constant, 
 the additional condition for fixing the constant has to be introduced, 
-i.e. that the integral mean value of the pressure should be vanish: $\int_\Omega p\ud x=0$. Thus we have a additional equation for $\{\beta_i\}$:
-\[
-  \sum_{i=0}^{N-1}|e_k|\beta_i=0
-  \]
-An sparse alternative is simply set $\beta_0=1$ instead of using the above integrate form.
+i.e. that the integral mean value of the pressure should be vanish: $\int_\Omega p\ud x=0$. Thus we have a additional equation for 
+$\{\beta_i\}: \sum_{i=0}^{N-1}|e_k|\beta_i=0$.
+An sparse alternative is simply set 
+\[\beta_0=1\] 
+instead of using the above integrate form.
 
-\paragraph{Equations Derived from Test Function $q_k$} The $k$-th($k=1,\cdot,M-1$) test function is $|e_{k-1}|q_k-|e_k|q_{k-1}$ and 
+\paragraph{Equations Derived from Test Function $q_k$} 
+The $k$-th($k=1,\cdot,M-1$) test function is $q_k-q_{k-1}$ and 
 \begin{equation}\label{eq:equation-testq}
-  \int_{\Omega}(|e_{k-1}|q_k(x)-|e_k|q_{k-1}(x))\nabla\cdot u_h^n(x)\ud x=0
+  \int_{\Omega}(q_k(x)-q_{k-1}(x))\nabla\cdot u_h^n(x)\ud x=0
 \end{equation}
 

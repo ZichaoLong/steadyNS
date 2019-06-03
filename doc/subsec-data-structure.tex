@@ -32,13 +32,10 @@ The data structure reads as follows:
     i.e. each source node do not have source node.
 
   \item $M$ elements: $\{e_k:k=0,\cdots,M-1\}\subset\{0,1,\cdots,N+NE-1\}^{(d+1)(d+2)/2}$. 
-    Each simplex element $e_k$, e.g. triangle or tetrahedron, has $d+1$ nodes $\{e_k[j]\}_{j=0}^{d}$. 
-    In the following report, indices of nodes of an element will be supercripts.
-    $e_k[d+1:]$ is the $d(d+1)/2$ edges of $e_k$:
-    \begin{itemize}
-      \item if $d=2$, then $e_k[d+1+j]$ is the edge opposite to $e_k[j]$
-      \item if $d=3$, then $e_k$ is the six edges in the order of $(1,2),(1,3),(1,4),(2,3),(2,4),(3,4)$
-    \end{itemize}
+    Each simplex element $e_k$, e.g. triangle or tetrahedron, 
+    has $d+1$ nodes $\{e_k[j(j+3)/2]\}_{j=0}^{d}$, 
+    and $e_k[j_1(j_1+1)/2+j_2]$ stands for the degree of edge $(j_1,j_2)$, 
+    where $0\leq j_2\leq j_1\leq d$.
 
 \end{itemize}
 In the following report, we use $i\in e_k$ and $i\sim j$ to represent the 
