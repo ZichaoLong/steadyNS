@@ -1,19 +1,5 @@
 # distutils: language = c++
-
-cdef extern from "steadyNS.h":
-    cdef int _reduceP(const int N, int *P)
-    cdef int _mergePeriodNodes(const int d, const int M,
-            const int *B, const int *P, int *ep)
-    cdef int _countStiffMatData(const int d, const int M, const int N,
-            const int *B, const int *P, const int *ep)
-    cdef int _StiffMatOO(const int C_NUM, const int d, const int M, const int N, const double nu, 
-            const int *B, const int *P, const int *ep, const double *Ep, const double *eMeasure, 
-            int *I, int *J, double *data)
-    cdef int _countPoisson(const int d, const int M, const int N,
-            const int *B, const int *P, const int *ep)
-    cdef int _PoissonOO(const int C_NUM, const int d, const int M, const int N, const double nu, 
-            const int *B, const int *P, const int *ep, const double *Ep, const double *eMeasure, 
-            int *I, int *J, double *data)
+# cython: language_level=3
 
 import numpy as np
 import scipy as sp

@@ -8,6 +8,11 @@
 #ifndef STEADYNSCPP_H
 #define STEADYNSCPP_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 int _reduceP(const int N, int *P);
 int _mergePeriodNodes(const int d, const int M,
         const int *B, const int *P, int *ep);
@@ -22,4 +27,7 @@ int _PoissonOO(const int C_NUM, const int d, const int M, const int N, const dou
         const int *B, const int *P, const int *ep, const double *Ep, const double *eMeasure, 
         int *I, int *J, double *data);
 
+#ifdef __cplusplus
+}
+#endif
 #endif // STEADYNSCPP_H

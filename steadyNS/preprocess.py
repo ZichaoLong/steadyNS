@@ -32,7 +32,8 @@ def nodesPreprocess(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, Physi
 
     # periodic nodes pair
     P = np.zeros(N,dtype=np.int32)-1
-    _, nodesPair, _ = model.mesh.getPeriodicNodes(1,3)
+    _,nodeTagsSlaver,nodeTagsMaster,_ = model.mesh.getPeriodicNodes(1,3)
+    nodesPair = np.stack([nodeTagsSlaver,nodeTagsMaster],axis=-1)
     nodesPair = np.array(nodesPair).astype(np.int32)
     nodesPair -= 1
     nodesPair = nodesPair[B[nodesPair[:,0]]==0]

@@ -61,7 +61,7 @@ factory.addLine(4,1,4)
 
 BoxCurveLoopTag = factory.addCurveLoop([1,2,3,4])
 factory.synchronize()
-model.mesh.setPeriodic(dim=1, tags=[3,], tagsSource=[1,], affineTransformation=[1,0,0,0, 0,1,0,maxy, 0,0,1,0, 0,0,0,0]);
+model.mesh.setPeriodic(dim=1, tags=[3,], tagsMaster=[1,], affineTransform=[1,0,0,0, 0,1,0,maxy, 0,0,1,0, 0,0,0,0]);
 
 
 #%% add box physical groups

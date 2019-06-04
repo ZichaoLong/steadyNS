@@ -1,8 +1,5 @@
-CPP_DIR=../steadyNS/cpp
-# CPP_DIR=$(shell pwd)/cpp
+CPP_DIR=cpp
 CPP_INCLUDEDIR=$(CPP_DIR)
-CPP_LIB=-lsteadyNS
-CPP_LDFLAGS=-L $(CPP_DIR) -Wl,-rpath=$(CPP_DIR) -Wl,--no-as-needed
 
 PY_INCLUDEDIR=$(shell python -c \
 			  "from distutils import sysconfig; \
@@ -16,15 +13,15 @@ PY_LDFLAGS=$(shell python -c \
 
 all:steadyNS.so
 steadyNS.cpp:steadyNS.pyx
-	cython steadyNS.pyx --cplus 
+	cython steadyNS.pyx --cplus -3
 steadyNS.o:steadyNS.cpp
 	g++ -c steadyNS.cpp -O3 -fPIC -I $(CPP_INCLUDEDIR) -I $(PY_INCLUDEDIR)
-libsteadyNS.so:
+cppextension:
 	+make -C $(CPP_DIR)
-steadyNS.so:steadyNS.o libsteadyNS.so
-	g++ steadyNS.o -o steadyNS.so -fopenmp -shared $(CPP_LIB) $(PY_LIBS) $(CPP_LDFLAGS) $(PY_LDFLAGS)
+steadyNS.so:steadyNS.o cppextension
+	g++ *.o cpp/*.o -o steadyNS.so -fopenmp -shared $(PY_LIBS)
 
 .PHONY:clean
 clean:
-	-rm -rf steadyNS.cpp steadyNS.o steadyNS.so __pycache__
-	make clean -C $(CPP_DIR)
+	-rm -rf steadyNS.cpp *.o steadyNS.so __pycache__
+	+make clean -C $(CPP_DIR)
