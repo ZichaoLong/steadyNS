@@ -133,23 +133,23 @@ PhysicalInlet = PhysicalInlet
 PhysicalOutlet = PhysicalOutlet
 PhysicalHoleBoundary = PhysicalCylinderBoundary
 #%% set coordinates and node boundaries
-N,coord,B,P = steadyNS.preprocess.nodesPreprocess(d, 
+N,coord,B,P = steadyNS.mesh.P1Nodes(d, 
         PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary)
 
 #%% set elements
-M,e,E,eMeasure = steadyNS.preprocess.elementPreprocess(d, WholeDomainTag, coord, B, P)
+M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B, P)
 
-steadyNS.preprocess.Check(coord,B,P,e,Cylinders,maxx=16)
+steadyNS.mesh.P1Check(coord,B,P,e,Cylinders,maxx=16)
 
 #%% set barycentric coordinate
-w,Lambda,Gamma,Theta = steadyNS.preprocess.BarycentricCoord(d)
+w,Lambda,Gamma,Theta = steadyNS.mesh.BarycentricCoord(d)
 print("w",w)
 print("Lambda\n",Lambda)
 print("Gamma\n", Gamma)
 print("Theta\n", Theta)
 
 #%% set global stiff matrix
-C_NUM = steadyNS.preprocess.countStiffMatData(B,P,e)
+C_NUM = steadyNS.steadyNS.countStiffMatData(B,P,e)
 print("non-zero number of C_OO=",C_NUM)
 C = steadyNS.steadyNS.StiffMat(C_NUM,nu,B,P,e,E,eMeasure)
 print("C shape=",C.shape)
@@ -169,7 +169,7 @@ for i in range(N):
 print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
 
 #%% set stiff matrix for poisson equation
-C_NUM = steadyNS.preprocess.countPoisson(B,P,e)
+C_NUM = steadyNS.steadyNS.countPoisson(B,P,e)
 print("non-zero number of C_OO=",C_NUM)
 C = steadyNS.steadyNS.Poisson(C_NUM,nu,B,P,e,E,eMeasure)
 print("C shape=",C.shape)

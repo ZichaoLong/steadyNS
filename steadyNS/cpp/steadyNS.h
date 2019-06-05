@@ -5,8 +5,8 @@
   > Created Time: 2019-05-16
  ************************************************************************/
 
-#ifndef STEADYNSCPP_H
-#define STEADYNSCPP_H
+#ifndef STEADYNS_H
+#define STEADYNS_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,4 +30,4 @@ int _PoissonOO(const int C_NUM, const int d, const int M, const int N, const dou
 #ifdef __cplusplus
 }
 #endif
-#endif // STEADYNSCPP_H
+#endif // STEADYNS_H

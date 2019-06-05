@@ -1,12 +1,12 @@
 import gmsh
 import math
 import numpy as np
-from .steadyNS import reduceP,mergePeriodicNodes,countStiffMatData,countPoisson
+from .mesh_extension import reduceP,mergePeriodicNodes
 
 model = gmsh.model
 factory = model.geo
 
-def nodesPreprocess(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary):
+def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary):
     # all nodes
     nodeTags,coord = model.mesh.getNodesForPhysicalGroup(dim=d,tag=PhysicalWholeDomain)
     nodeTags -= 1
@@ -47,15 +47,16 @@ def nodesPreprocess(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, Physi
     ##
     assert(np.all(P[P[P!=-1]]==-1))
     B[P!=-1] = 4
-    B[P[P!=-1]] = 5
+    B[P[P!=-1]] = -1
     return N,coord,B,P
 
-def elementPreprocess(d, WholeDomainTag, coord, B, P):
+def P1Elements(d, WholeDomainTag, coord, B, P):
     _, _, e = model.mesh.getElements(dim=d, tag=WholeDomainTag)
     e = e[0]
     e = np.ascontiguousarray(e.reshape(-1,d+1))-1
     M = len(e)
     e = e.astype(np.int32)
+    e.sort()
     E = np.empty((M,d+1,d+1),dtype=float)
     E[:,0,:] = 1
     for i in range(d+1):
@@ -79,7 +80,7 @@ def BarycentricCoord(d):
     Theta = Lambda.transpose()@Gamma
     return w,Lambda,Gamma,Theta
 
-def Check(coord,B,P,e,Cylinders,maxx=16):
+def P1Check(coord,B,P,e,Cylinders,maxx=16):
     M = e.shape[0]
     d = e.shape[1]-1
     N = P.size
@@ -87,14 +88,14 @@ def Check(coord,B,P,e,Cylinders,maxx=16):
     print("node number:",N, "element number:",M)
     print("B==4:", np.argwhere(B==4).reshape(-1))
     print("P!=-1:",np.argwhere(P!=-1).reshape(-1))
-    print("B==5:", np.argwhere(B==5).reshape(-1))
+    print("B==-1:", np.argwhere(B==-1).reshape(-1))
     print("P[P!=-1]:",P[P!=-1])
     print("period nodes number",sum(B==4))
     print("coord")
     print(coord[B==4].transpose())
-    print("period source nodes number",sum(B==5))
+    print("period source nodes number",sum(B==-1))
     print("coord")
-    print(coord[B==5].transpose())
+    print(coord[B==-1].transpose())
     # check inlet,outlet,noslipwall nodes
     print(np.linalg.norm(coord[np.abs(coord[:,0])<1e-10]-coord[B==1]))
     print(np.linalg.norm(coord[np.abs(coord[:,0]-maxx)<1e-10]-coord[B==2]))

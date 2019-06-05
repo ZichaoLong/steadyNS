@@ -23,7 +23,7 @@ int _countPoisson(const int d, const int M, const int N,
 #pragma omp parallel for schedule(static) reduction(+:COUNT)
     for (int i=0; i<N; ++i)
     {
-        if (B[i]==0 || B[i]==5) continue;
+        if (B[i]==0 || B[i]==-1) continue;
         else if (B[i]==4) COUNT +=2;
         else ++COUNT;
     }
@@ -56,7 +56,7 @@ int _PoissonOO(const int C_NUM, const int d, const int M, const int N, const dou
     int idx = 0;
     for (int i=0; i<N; ++i)
     {
-        if (B[i]==0 || B[i]==5)
+        if (B[i]==0 || B[i]==-1)
             continue;
         else if (B[i]==4)
         {

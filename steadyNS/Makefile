@@ -11,17 +11,25 @@ PY_LDFLAGS=$(shell python -c \
 		  "from distutils import sysconfig; \
 		  print(sysconfig.get_config_var('LDFLAGS'))")
 
-all:steadyNS.so
-steadyNS.cpp:steadyNS.pyx
+all:steadyNS.so mesh_extension.so
+steadyNS.so:steadyNS.o cppextension
+	g++ steadyNS.o cpp/libsteadyNS.a -o steadyNS.so -fopenmp -shared $(PY_LIBS)
+mesh_extension.so:mesh_extension.o cppextension
+	g++ mesh_extension.o cpp/libmesh_extension.a -o mesh_extension.so -fopenmp -shared $(PY_LIBS)
+
+steadyNS.cpp:steadyNS.pyx steadyNS.pxd
 	cython steadyNS.pyx --cplus -3
 steadyNS.o:steadyNS.cpp
-	g++ -c steadyNS.cpp -O3 -fPIC -I $(CPP_INCLUDEDIR) -I $(PY_INCLUDEDIR)
+	g++ -c steadyNS.cpp -O3 -fPIC -Wall -I $(CPP_INCLUDEDIR) -I $(PY_INCLUDEDIR)
+mesh_extension.cpp:mesh_extension.pyx mesh_extension.pxd
+	cython mesh_extension.pyx --cplus -3
+mesh_extension.o:mesh_extension.cpp
+	g++ -c mesh_extension.cpp -O3 -fPIC -Wall -I $(CPP_INCLUDEDIR) -I $(PY_INCLUDEDIR)
+
 cppextension:
 	+make -C $(CPP_DIR)
-steadyNS.so:steadyNS.o cppextension
-	g++ *.o cpp/*.o -o steadyNS.so -fopenmp -shared $(PY_LIBS)
 
 .PHONY:clean
 clean:
-	-rm -rf steadyNS.cpp *.o steadyNS.so __pycache__
+	-rm -rf steadyNS.cpp mesh_extension.cpp *.o steadyNS.so mesh_extension.so __pycache__
 	+make clean -C $(CPP_DIR)
