@@ -1,4 +1,4 @@
-CPPFLAGS=-std=c++11 -fPIC -O3 -fopenmp -lm -I ASTen
+CPPFLAGS=-std=c++11 -fPIC -O3 -Wall -fopenmp -lm -I ASTen
 all:preprocess.o stiffmat.o poisson.o
 preprocess.o:preprocess.cpp
 	g++ -c $(CPPFLAGS) preprocess.cpp
