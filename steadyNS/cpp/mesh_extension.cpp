@@ -35,3 +35,40 @@ int _mergePeriodNodes(const int d, const int M,
     return 0;
 }
 
+int _switchEdgeNode(const int L, int *Edge)
+{
+    int tmp;
+#pragma omp parallel for schedule(static) private(tmp)
+    for (int i=0; i<L; ++i)
+        if (Edge[2*i]>Edge[2*i+1])
+        {
+            tmp = Edge[2*i];
+            Edge[2*i] = Edge[2*i+1];
+            Edge[2*i+1] = tmp;
+        }
+    return 0;
+}
+
+int _updateEdgeTags(const int N, const int NE, const int *Edge, 
+        const int *B, int *Bedge)
+{
+    int tag1,tag2;
+#pragma omp parallel for schedule(static) private(tag1,tag2)
+    for (int i=0; i<NE; ++i)
+    {
+        tag1 = B[Edge[2*i]];
+        tag2 = B[Edge[2*i+1]];
+        if (tag1==tag2)
+            Bedge[i] = tag1;
+        else if (tag1==0 || tag2==0)
+            Bedge[i] = 0;
+        else if (tag1==-1 || tag2==-1)
+            Bedge[i] = -1;
+        else 
+        {
+            cout << "error" << endl;
+            exit(0);
+        }
+    }
+    return 0;
+}

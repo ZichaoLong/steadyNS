@@ -1,7 +1,7 @@
 import gmsh
 import math
 import numpy as np
-from .mesh_extension import reduceP,mergePeriodicNodes
+from .mesh_extension import reduceP,mergePeriodicNodes,switchEdgeNode,updateEdgeTags
 
 model = gmsh.model
 factory = model.geo
@@ -36,7 +36,7 @@ def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleB
     nodesPair = np.stack([nodeTagsSlaver,nodeTagsMaster],axis=-1)
     nodesPair = np.array(nodesPair).astype(np.int32)
     nodesPair -= 1
-    nodesPair = nodesPair[B[nodesPair[:,0]]==0]
+    # nodesPair = nodesPair[B[nodesPair[:,0]]==0]
     P[nodesPair[:,0]] = nodesPair[:,1]
     P = reduceP(P)
     ## reduceP, implement in python script
@@ -45,9 +45,12 @@ def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleB
     #         if P[P[i]]!=-1:
     #             P[i] = P[P[i]]
     ##
-    assert(np.all(P[P[P!=-1]]==-1))
-    B[P!=-1] = 4
-    B[P[P!=-1]] = -1
+    tmp = P!=-1
+    assert(np.all(P[P[tmp]]==-1))
+    B[tmp] = 4
+    tmp = P[tmp]
+    tmp = tmp[B[tmp]==0]
+    B[tmp] = -1 # mark all non-boundary source nodes
     return N,coord,B,P
 
 def P1Elements(d, WholeDomainTag, coord, B, P):
@@ -56,7 +59,6 @@ def P1Elements(d, WholeDomainTag, coord, B, P):
     e = np.ascontiguousarray(e.reshape(-1,d+1))-1
     M = len(e)
     e = e.astype(np.int32)
-    e.sort()
     E = np.empty((M,d+1,d+1),dtype=float)
     E[:,0,:] = 1
     for i in range(d+1):
@@ -66,6 +68,27 @@ def P1Elements(d, WholeDomainTag, coord, B, P):
     E = np.ascontiguousarray(E)
     e = mergePeriodicNodes(B,P,e)
     return M,e,E,eMeasure
+
+def P2Elements(d, B, e):
+    EdgeNumPerElem = (d+1)*d//2
+    N = len(B)
+    M = len(e)
+    Edge = np.empty((EdgeNumPerElem*M,2),dtype=np.int32)
+    j = 0
+    for j1 in range(1,d+1):
+        for j2 in range(j1):
+            Edge[j*M:(j+1)*M] = e[:,(j2,j1)]
+            j += 1
+    assert(j==EdgeNumPerElem)
+    Edge = switchEdgeNode(Edge)
+    Edge,unique_inverse = \
+            np.unique(Edge,return_inverse=True,axis=0)
+    NE = len(Edge)
+    Bedge = updateEdgeTags(Edge,B)
+    B = np.concatenate((B,Bedge),axis=0)
+    elem2edge = unique_inverse.reshape(EdgeNumPerElem, M).transpose()+N
+    e = np.concatenate((e,elem2edge),axis=1)
+    return NE,B,e
 
 def BarycentricCoord(d):
     if d==2:
@@ -93,12 +116,12 @@ def P1Check(coord,B,P,e,Cylinders,maxx=16):
     print("period nodes number",sum(B==4))
     print("coord")
     print(coord[B==4].transpose())
-    print("period source nodes number",sum(B==-1))
+    print("period non-boundary source nodes number",sum(B==-1))
     print("coord")
     print(coord[B==-1].transpose())
     # check inlet,outlet,noslipwall nodes
-    print(np.linalg.norm(coord[np.abs(coord[:,0])<1e-10]-coord[B==1]))
-    print(np.linalg.norm(coord[np.abs(coord[:,0]-maxx)<1e-10]-coord[B==2]))
+    print(np.all(np.abs(coord[B==1,0])<1e-10))
+    print(np.all(np.abs(coord[B==2,0]-maxx)<1e-10))
     BC = np.ndarray(N,dtype=bool)
     BC[:] = False
     for cylinder in Cylinders:

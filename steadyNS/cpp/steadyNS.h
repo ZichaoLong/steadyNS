@@ -16,6 +16,9 @@ extern "C" {
 int _reduceP(const int N, int *P);
 int _mergePeriodNodes(const int d, const int M,
         const int *B, const int *P, int *ep);
+int _switchEdgeNode(const int L, int *Edge);
+int _updateEdgeTags(const int N, const int NE, const int *Edge, 
+        const int *B, int *Bedge);
 int _countStiffMatData(const int d, const int M, const int N,
         const int *B, const int *P, const int *ep);
 int _StiffMatOO(const int C_NUM, const int d, const int M, const int N, const double nu, 

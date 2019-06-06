@@ -176,6 +176,11 @@ print("C shape=",C.shape)
 print("C nnz=",C.nnz)
 print("condition number of C=",np.linalg.cond(C.todense()))
 
+#%% test P2Elements
+NE,B,e = steadyNS.mesh.P2Elements(d,B,e)
+print("edge number: ", NE)
+print("e.shape: ", e.shape)
+
 #%%
 if len(sys.argv)<=1:
     gmsh.fltk.run()
