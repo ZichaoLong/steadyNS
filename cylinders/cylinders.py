@@ -141,13 +141,6 @@ M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B, P)
 
 steadyNS.mesh.P1Check(coord,B,P,e,Cylinders,maxx=16)
 
-#%% set barycentric coordinate
-w,Lambda,Gamma,Theta = steadyNS.mesh.BarycentricCoord(d)
-print("w",w)
-print("Lambda\n",Lambda)
-print("Gamma\n", Gamma)
-print("Theta\n", Theta)
-
 #%% set global stiff matrix
 C_NUM = steadyNS.steadyNS.countStiffMatData(B,P,e)
 print("non-zero number of C_OO=",C_NUM)
@@ -178,6 +171,7 @@ print("condition number of C=",np.linalg.cond(C.todense()))
 
 #%% test P2Elements
 NE,B,e = steadyNS.mesh.P2Elements(d,B,e)
+assert(B.shape[0]==NE+N)
 print("edge number: ", NE)
 print("e.shape: ", e.shape)
 

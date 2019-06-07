@@ -90,19 +90,6 @@ def P2Elements(d, B, e):
     e = np.concatenate((e,elem2edge),axis=1)
     return NE,B,e
 
-def BarycentricCoord(d):
-    if d==2:
-        w = 1/3
-        Lambda = np.ones((d+1,3))/6+np.eye(d+1)/2
-    elif d==3:
-        alpha = 0.5854101966249685
-        beta = 0.138196601125015
-        w = 1/4
-        Lambda = np.ones((d+1,4))*beta+np.eye(d+1)*(alpha-beta)
-    Gamma = w*Lambda
-    Theta = Lambda.transpose()@Gamma
-    return w,Lambda,Gamma,Theta
-
 def P1Check(coord,B,P,e,Cylinders,maxx=16):
     M = e.shape[0]
     d = e.shape[1]-1
