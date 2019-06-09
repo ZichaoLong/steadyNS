@@ -83,6 +83,7 @@ def P2Elements(d, B, e):
     Edge = switchEdgeNode(Edge)
     Edge,unique_inverse = \
             np.unique(Edge,return_inverse=True,axis=0)
+    unique_inverse = unique_inverse.astype(np.int32)
     NE = len(Edge)
     Bedge = updateEdgeTags(Edge,B)
     B = np.concatenate((B,Bedge),axis=0)

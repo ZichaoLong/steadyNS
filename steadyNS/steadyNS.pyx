@@ -33,12 +33,12 @@ def StiffMat(C_NUM,d,nu,M,N,NE,B,P,e,E,eMeasure):
     eMeasure = np.ascontiguousarray(eMeasure)
     cdef double[::1] E_memview = E.reshape(-1)
     cdef double[::1] eMeasure_memview = eMeasure
-    W1,Lambda1 = QuadPts(d,1)
-    W2,Lambda2 = QuadPts(d,2)
+    W1,Lambda1 = QuadPts.quadpts(d,1)
+    W2,Lambda2 = QuadPts.quadpts(d,2)
     cdef double[::1] W1_memview = W1
     cdef double[::1] W2_memview = W2
-    cdef double[::1] Lambda1_memview = Lambda1
-    cdef double[::1] Lambda2_memview = Lambda2
+    cdef double[::1] Lambda1_memview = Lambda1.reshape(-1)
+    cdef double[::1] Lambda2_memview = Lambda2.reshape(-1)
     idx = _StiffMatOO(C_NUM, d, nu, M, N, NE,
             &B_memview[0], &P_memview[0], &e_memview[0],
             &E_memview[0], &eMeasure_memview[0],

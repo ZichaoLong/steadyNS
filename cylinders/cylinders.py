@@ -141,10 +141,15 @@ M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B, P)
 
 steadyNS.mesh.P1Check(coord,B,P,e,Cylinders,maxx=16)
 
+NE,B,e = steadyNS.mesh.P2Elements(d, B, e)
+assert(B.shape[0]==NE+N)
+print("edge number: ", NE)
+print("e.shape: ", e.shape)
+
 #%% set global stiff matrix
-C_NUM = steadyNS.steadyNS.countStiffMatData(B,P,e)
+C_NUM = steadyNS.steadyNS.countStiffMatData(d,M,N,NE,B,P,e)
 print("non-zero number of C_OO=",C_NUM)
-C = steadyNS.steadyNS.StiffMat(C_NUM,nu,B,P,e,E,eMeasure)
+C = steadyNS.steadyNS.StiffMat(C_NUM,d,nu,M,N,NE,B,P,e,E,eMeasure)
 print("C shape=",C.shape)
 print("C nnz=",C.nnz)
 print("condition number of C=",np.linalg.cond(C.todense()))
@@ -160,20 +165,6 @@ for i in range(N):
         for l in range(d):
             index[d*i+l] = False
 print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
-
-#%% set stiff matrix for poisson equation
-C_NUM = steadyNS.steadyNS.countPoisson(B,P,e)
-print("non-zero number of C_OO=",C_NUM)
-C = steadyNS.steadyNS.Poisson(C_NUM,nu,B,P,e,E,eMeasure)
-print("C shape=",C.shape)
-print("C nnz=",C.nnz)
-print("condition number of C=",np.linalg.cond(C.todense()))
-
-#%% test P2Elements
-NE,B,e = steadyNS.mesh.P2Elements(d,B,e)
-assert(B.shape[0]==NE+N)
-print("edge number: ", NE)
-print("e.shape: ", e.shape)
 
 #%%
 if len(sys.argv)<=1:
