@@ -12,27 +12,15 @@
 #include "ASTen/Tensor.h"
 using std::cout; using std::endl; using std::ends;
 
-int _StiffMatOO(const int C_NUM, const int d, const int M, const int N, const double nu, 
-        const int *B, const int *P, const int *ep, const double *Ep, const double *eMeasure, 
-        int *I, int *J, double *data)
+int _StiffMatOO_Boundary(const int d, const int N, const int NE, 
+        const int *B, const int *P, 
+        int &idx, int *I, int *J, double *data)
 {
-    int esize[] = {M,d+1};
-    int estride[] = {d+1,1};
-    TensorAccessor<const int,2> e(ep,esize,estride);
-    int Esize[] = {M,d+1,d};
-    int Estride[] = {(d+1)*d,d,1};
-    TensorAccessor<const double,3> E(Ep,Esize,Estride);
-    double eMeasureMean = 0;
-    for (int k=0; k<M; ++k)
-        eMeasureMean += eMeasure[k];
-    eMeasureMean /= M;
-    int idx = 0;
     // equations derived from boundary conditions
-    for (int i=0; i<N; ++i)
+    for (int i=0; i<N+NE; ++i)
     {
-        if (B[i]==0 || B[i]==-1)
-            continue;
-        else if (B[i]==4)
+        if (B[i]==4) // periodic nodes i; 
+            // there are no periodic edges since there are no periodic nodes in e
             for (int l=0; l<d; ++l)
             {
                 I[idx] = d*i+l;
@@ -40,11 +28,11 @@ int _StiffMatOO(const int C_NUM, const int d, const int M, const int N, const do
                 data[idx] = 1;
                 ++idx;
                 I[idx] = d*i+l;
-                J[idx] = d*P[i]+l;
+                J[idx] = d*P[i]+l; // source nodes P[i]
                 data[idx] = -1;
                 ++idx;
             }
-        else // (B[i]==1 || B[i]==2 || B[i]==3) // no degrees of freedom
+        else if (B[i]>0) // Dirichlet boundaries
             for (int l=0; l<d; ++l)
             {
                 I[idx] = d*i+l;
@@ -53,91 +41,202 @@ int _StiffMatOO(const int C_NUM, const int d, const int M, const int N, const do
                 ++idx;
             }
     }
-    Tensor<double,2> EETTensor({d+1,d+1});
-    TensorAccessor<double,2> EET = EETTensor.accessor();
-    // coefficients derived from (d*i+l)-th test function $v_l^j$ in $e_k,i=e_k^j$
-    for (int k=0; k<M; ++k) // $e_k$
+    return 0;
+}
+
+int CalculateTheta(const int d, const TensorAccessor<const double,2> &Ek,
+        const int nQuad, TensorAccessor<const double,2> &Lambda,
+        TensorAccessor<double,3> &Theta)
+{
+    for (int i=0; i<nQuad; ++i)
     {
-        // EET = matmul(E[k],transpose(E[k])); // (d+1)x(d+1)
-        for (int j1=0; j1<d+1; ++j1)
-            for (int j2=0; j2<d+1; ++j2)
-            {
-                EET[j1][j2] = 0;
-                for (int l=0; l<d; ++l)
-                    EET[j1][j2] += E[k][j1][l]*E[k][j2][l];
-            }
-        for (int j=0,i; j<d+1; ++j)
-        {
-            i = e[k][j];
-            if (B[i]==1 || B[i]==2 || B[i]==3)
-                continue; // no test function $v_l^j$ here
-            if (B[i]==4)
-                cout << "error" << endl;
-            for (int l=0; l<d; ++l)
-            {
-                I[idx] = d*i+l;
-                J[idx] = d*N+k;
-                data[idx] = -E[k][j][l];
-                ++idx;
-                for (int je=0; je<d+1; ++je)
-                {
-                    I[idx] = d*i+l;
-                    J[idx] = d*e[k][je]+l;
-                    data[idx] = nu*eMeasure[k]*EET[je][j];
-                    ++idx;
-                }
-            }
-        }
-    }
-    // equations derived from $q_k-q_{k-1}$
-    for (int k=1; k<M; ++k) // e[k-1],e[k]
         for (int j=0; j<d+1; ++j)
             for (int l=0; l<d; ++l)
+                Theta[i][j][l] = 4*Lambda[i][j]*Ek[j][l]-Ek[j][l];
+        for (int j1=1; j1<d+1; ++j1)
+            for (int j2=0; j2<j1; ++j2)
             {
-                I[idx] = d*N+k-1;
-                J[idx] = d*e[k][j]+l;
-                data[idx] = E[k][j][l];
-                ++idx;
-                I[idx] = d*N+k-1;
-                J[idx] = d*e[k-1][j]+l;
-                data[idx] = -E[k-1][j][l];
+                for (int l=0; l<d; ++l)
+                    Theta[i][d+1+j1*(j1-1)/2+j2][l] = 
+                        4*(Lambda[i][j1]*Ek[j2][l]+Lambda[i][j2]*Ek[j1][l]);
+            }
+    }
+    return 0;
+}
+
+int UpdateStiffMatTheta12Sum(const int d, const int D, const TensorAccessor<const double,2> &Ek,
+        const int nQuad1, const double *W1, TensorAccessor<const double,2> &Lambda1,
+        const int nQuad2, const double *W2, TensorAccessor<const double,2> &Lambda2,
+        TensorAccessor<double,2> &Theta1Sum, TensorAccessor<double,2> &Theta2Sum)
+{
+    Tensor<double,3> Theta1Tensor({nQuad1,D,d});
+    Tensor<double,3> Theta2Tensor({nQuad2,D,d});
+    TensorAccessor<double,3> Theta1 = Theta1Tensor.accessor();
+    TensorAccessor<double,3> Theta2 = Theta2Tensor.accessor();
+    CalculateTheta(d,Ek,nQuad1,Lambda1,Theta1);
+    CalculateTheta(d,Ek,nQuad2,Lambda2,Theta2);
+    double tmp;
+    // update Theta2Sum
+    for (int j0=0; j0<D; ++j0)
+        for (int j1=0; j1<D; ++j1)
+        {
+            tmp = 0;
+            for (int i=0; i<nQuad2; ++i)
+                for (int l=0; l<d; ++l)
+                    tmp += W2[i]*Theta2[i][j0][l]*Theta2[i][j1][l];
+            Theta2Sum[j0][j1] = tmp;
+        }
+    // update Theta1Sum
+    for (int j=0; j<D; ++j)
+        for (int l=0; l<d; ++l)
+        {
+            tmp = 0;
+            for (int i=0; i<nQuad1; ++i)
+                tmp += W1[i]*Theta1[i][j][l];
+            Theta1Sum[j][l] = tmp;
+        }
+    return 0;
+}
+
+int _StiffMatOO_v(const int d, const int D, const int N, const int NE, 
+        const int k, const double nu, const int *B, 
+        const TensorAccessor<const int,1> &ek, const double ekMeasure, 
+        TensorAccessor<double,2> &Theta1Sum, 
+        TensorAccessor<double,2> &Theta2Sum, 
+        int &idx, int *I, int *J, double *data)
+{
+    int row=-1;
+    // stiffness matrix for $v^{j0,l}$, row=d*ek[j0]+l
+    for (int j0=0; j0<D; ++j0)
+    {
+        if (B[ek[j0]]>0) continue; // boundary equations have been set done
+        for (int l=0; l<d; ++l)
+        {
+            row = d*ek[j0]+l;
+            for (int j1=0; j1<D; ++j1)
+            {
+                I[idx] = row;
+                J[idx] = d*ek[j1]+l;
+                data[idx] = nu*ekMeasure*Theta2Sum[j0][j1];
                 ++idx;
             }
-    // uniqueness of p
-    for (int k=0; k<M; ++k)
-    {
-        I[idx] = d*N+M-1;
-        J[idx] = d*N+k;
-        data[idx] = 1;
-        ++idx;
+            I[idx] = row;
+            J[idx] = d*(N+NE)+k;
+            data[idx] = -ekMeasure*Theta1Sum[j0][l];
+            ++idx;
+        }
     }
+    return 0;
+}
+
+int _StiffMatOO_q(const int d, const int D, const int M, const int N, const int NE, const int k, 
+        const TensorAccessor<const int,1> &ek, TensorAccessor<double,2> &Theta1Sum, 
+        int &idx, int *I, int *J, double *data)
+{
+    int row;
+    // stiffness matrix for $q_k-q_{k-1}$, row=d*(N+NE)+k-1, 
+    if (k>0)
+    {
+        row = d*(N+NE)+k-1;
+        for (int j=0; j<D; ++j)
+            for (int l=0; l<d; ++l)
+            {
+                I[idx] = row;
+                J[idx] = d*ek[j]+l;
+                data[idx] = Theta1Sum[j][l];
+                ++idx;
+            }
+    }
+    // stiffness matrix for $q_{k+1}-q_k$, row=d*(N+NE)+k, 
+    if (k<M-1)
+    {
+        row = d*(N+NE)+k;
+        for (int j=0; j<D; ++j)
+            for (int l=0; l<d; ++l)
+            {
+                I[idx] = row;
+                J[idx] = d*ek[j]+l;
+                data[idx] = -Theta1Sum[j][l];
+                ++idx;
+            }
+    }
+    return 0;
+}
+
+int _StiffMatOO(const int C_NUM, const int d, const double nu, 
+        const int M, const int N, const int NE, 
+        const int *B, const int *P, const int *ep, 
+        const double *Ep, const double *eMeasure, 
+        const int nQuad1, const double *W1, const double *Lambda1p, 
+        const int nQuad2, const double *W2, const double *Lambda2p, 
+        int *I, int *J, double *data)
+{
+    int D = (d+1)*(d+2)/2;
+    // convert pointer to TensorAccessor
+    int esize[] = {M,D}; int estride[] = {D,1};
+    TensorAccessor<const int,2> e(ep,esize,estride);
+    int Esize[] = {M,d+1,d}; int Estride[] = {(d+1)*d,d,1};
+    TensorAccessor<const double,3> E(Ep,Esize,Estride);
+    int Lambda1size[] = {nQuad1,d+1}; int Lambda1stride[] = {d+1,1};
+    TensorAccessor<const double,2> Lambda1(Lambda1p,Lambda1size,Lambda1stride);
+    int Lambda2size[] = {nQuad2,d+1}; int Lambda2stride[] = {d+1,1};
+    TensorAccessor<const double,2> Lambda2(Lambda2p,Lambda2size,Lambda2stride);
+
+    int idx = 0;
+
+    // equations derived from boundary conditions
+    _StiffMatOO_Boundary(d, N, NE, B, P, idx, I, J, data);
+
+    Tensor<double,2> Theta1SumTensor({D,d});
+    Tensor<double,2> Theta2SumTensor({D,D});
+    TensorAccessor<double,2> Theta1Sum = Theta1SumTensor.accessor();
+    TensorAccessor<double,2> Theta2Sum = Theta2SumTensor.accessor();
+    // coefficients derived from test function in $e_k$
+    for (int k=0; k<M; ++k) // $e_k$
+    {
+        // update Theta1Sum,Theta2Sum
+        UpdateStiffMatTheta12Sum(d, D, E[k], 
+                nQuad1, W1, Lambda1, nQuad2, W2, Lambda2, 
+                Theta1Sum, Theta2Sum);
+        // stiffness matrix for $v^{j0,l}$, row=d*e[k][j0]+l
+        _StiffMatOO_v(d, D, N, NE, k, nu, B, 
+                e[k], eMeasure[k], Theta1Sum, Theta2Sum, 
+                idx, I, J, data);
+        // stiffness matrix for $q_k-q_{k-1}$ and $q_{k+1}-q_k$, 
+        // row=d*(N+NE)+k and d*(N+NE)+k+1 
+        _StiffMatOO_q(d, D, M, N, NE, k, e[k], Theta1Sum, 
+                idx, I, J, data);
+    }
+    I[idx] = d*(N+NE)+M-1;
+    J[idx] = d*(N+NE)+M-1;
+    data[idx] = 1;
+    ++idx;
     return idx;
 }
 
-int _countStiffMatData(const int d, const int M, const int N,
+int _countStiffMatData(const int d, const int M, const int N, const int NE,
         const int *B, const int *P, const int *ep)
 {
     int COUNT=0;
-    int esize[] = {M,d+1};
-    int estride[] = {d+1,1};
+    int D = (d+1)*(d+2)/2;
+    // convert pointer to TensorAccessor
+    int esize[] = {M,D}; int estride[] = {D,1};
     TensorAccessor<const int,2> e(ep,esize,estride);
 #pragma omp parallel for schedule(static) reduction(+:COUNT)
-    for (int i=0; i<N; ++i)
+    for (int i=0; i<N+NE; ++i)
     {
         if (B[i]==4)
             COUNT += d*2;
-        if (B[i]==1 || B[i]==2 || B[i]==3)
+        else if (B[i]>0)
             COUNT += d;
     }
 #pragma omp parallel for schedule(static) reduction(+:COUNT)
-    for (int k=0; k<M; ++k) 
-        for (int j=0,i; j<d+1; ++j)
+    for (int k=0; k<M; ++k)
+        for (int j0=0; j0<D; ++j0)
         {
-            i = e[k][j];
-            if (B[i]==1 || B[i]==2 || B[i]==3)
-                continue; 
-            COUNT += d*(d+2);
+            if (B[e[k][j0]]>0) continue;
+            COUNT += d*(D+1);
         }
-    COUNT += 2*(M-1)*(d+1)*d+M;
+    COUNT += 2*(M-1)*D*d+1;
     return COUNT;
 }

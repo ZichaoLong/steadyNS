@@ -7,9 +7,9 @@ all:libmesh_extension.a libsteadyNS.a
 
 $(OBJS):%.o:%.cpp
 	g++ -c $(CPPFLAGS) $< -o $@
-libmesh_extension.a:$(OBJS)
+libmesh_extension.a:mesh_extension.o
 	ar cr libmesh_extension.a mesh_extension.o 
-libsteadyNS.a:$(OBJS)
+libsteadyNS.a:ns.o poisson.o
 	ar cr libsteadyNS.a ns.o poisson.o
 
 .PHONY:clean
