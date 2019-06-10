@@ -156,8 +156,6 @@ print("condition number of C=",np.linalg.cond(C.todense()))
 C = C.todense()
 values,vectors = np.linalg.eig(C)
 vectors = np.array(vectors)
-zerovectors = vectors[:,np.abs(values.reshape(-1))<1e-10]
-print(np.linalg.norm(C[:-1,324:]@zerovectors[324:]))
 index = np.ndarray(C.shape[0],dtype=np.bool)
 index[:] = True
 for i in range(N):
@@ -165,6 +163,26 @@ for i in range(N):
         for l in range(d):
             index[d*i+l] = False
 print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
+
+#%% set global stiff matrix for poisson equation
+C_NUM = steadyNS.poisson.Poisson_countStiffMatData(d,M,N,NE,B,P,e)
+print("non-zero number of C_OO=",C_NUM)
+C = steadyNS.poisson.Poisson_StiffMat(C_NUM,d,nu,M,N,NE,B,P,e,E,eMeasure)
+print("C shape=",C.shape)
+print("C nnz=",C.nnz)
+print("condition number of C=",np.linalg.cond(C.todense()))
+C = C.todense()
+values,vectors = np.linalg.eig(C)
+vectors = np.array(vectors)
+index = np.ndarray(C.shape[0],dtype=np.bool)
+index[:] = True
+for i in range(N):
+    if (B[i]==1 or B[i]==2 or B[i]==3):
+        for l in range(d):
+            index[d*i+l] = False
+print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
+values2,vectors2 = np.linalg.eig(C[::2,::2])
+print(np.linalg.norm(np.repeat(np.sort(values2),2)-np.sort(values)))
 
 #%%
 if len(sys.argv)<=1:
