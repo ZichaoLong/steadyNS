@@ -67,7 +67,7 @@ model.mesh.setPeriodic(dim=1, tags=[3,], tagsMaster=[1,], affineTransform=[1,0,0
 #%% add box physical groups
 PhysicalInletNodes = 1
 PhysicalOutletNodes = 2
-PhysicalPeriodBoundary = 4
+PhysicalPeriodBoundary = 3
 PhysicalInlet = 1
 PhysicalOutlet = 2
 model.addPhysicalGroup(dim=0, tags=[1,4], tag=PhysicalInletNodes)
@@ -109,7 +109,7 @@ for cylinder in Cylinders:
 AllCircleArcTags = []
 for CircleArcTag in CircleArcTags:
     AllCircleArcTags += CircleArcTag
-PhysicalCylinderBoundary = 3
+PhysicalCylinderBoundary = 4
 model.addPhysicalGroup(dim=1, tags=list(AllCircleArcTags), tag=PhysicalCylinderBoundary)
 model.setPhysicalName(dim=1, tag=PhysicalCylinderBoundary, name='PhysicalCylinderBoundary')
 factory.synchronize()
@@ -159,7 +159,7 @@ vectors = np.array(vectors)
 index = np.ndarray(C.shape[0],dtype=np.bool)
 index[:] = True
 for i in range(N):
-    if (B[i]==1 or B[i]==2 or B[i]==3):
+    if (B[i]==1 or B[i]==2 or B[i]==4):
         for l in range(d):
             index[d*i+l] = False
 print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
@@ -177,7 +177,7 @@ vectors = np.array(vectors)
 index = np.ndarray(C.shape[0],dtype=np.bool)
 index[:] = True
 for i in range(N):
-    if (B[i]==1 or B[i]==2 or B[i]==3):
+    if (B[i]==1 or B[i]==2 or B[i]==4):
         for l in range(d):
             index[d*i+l] = False
 print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))

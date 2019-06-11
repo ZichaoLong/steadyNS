@@ -28,7 +28,7 @@ def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleB
     # noslip wall boundary nodes
     NoslipWallNodeTags,_ = model.mesh.getNodesForPhysicalGroup(dim=d-1,tag=PhysicalHoleBoundary)
     NoslipWallNodeTags -= 1
-    B[NoslipWallNodeTags] = 3
+    B[NoslipWallNodeTags] = 4
 
     # periodic nodes pair
     P = np.zeros(N,dtype=np.int32)-1
@@ -47,7 +47,7 @@ def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleB
     ##
     tmp = P!=-1
     assert(np.all(P[P[tmp]]==-1))
-    B[tmp] = 4
+    B[tmp] = 3
     tmp = P[tmp]
     tmp = tmp[B[tmp]==0]
     B[tmp] = -1 # mark all non-boundary source nodes
@@ -97,13 +97,13 @@ def P1Check(coord,B,P,e,Cylinders,maxx=16):
     N = P.size
     assert(np.all(P[e.reshape(-1)]==-1))
     print("node number:",N, "element number:",M)
-    print("B==4:", np.argwhere(B==4).reshape(-1))
+    print("B==3:", np.argwhere(B==3).reshape(-1))
     print("P!=-1:",np.argwhere(P!=-1).reshape(-1))
     print("B==-1:", np.argwhere(B==-1).reshape(-1))
     print("P[P!=-1]:",P[P!=-1])
-    print("period nodes number",sum(B==4))
+    print("period nodes number",sum(B==3))
     print("coord")
-    print(coord[B==4].transpose())
+    print(coord[B==3].transpose())
     print("period non-boundary source nodes number",sum(B==-1))
     print("coord")
     print(coord[B==-1].transpose())
@@ -120,4 +120,4 @@ def P1Check(coord,B,P,e,Cylinders,maxx=16):
         BCtmp -= (cylinder['d']/2)**2
         BCtmp = BCtmp<1e-10
         BC = BC | BCtmp
-    print(np.linalg.norm(coord[BC]-coord[B==3]))
+    print(np.linalg.norm(coord[BC]-coord[B==4]))

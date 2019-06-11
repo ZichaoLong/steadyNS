@@ -31,7 +31,7 @@ int _mergePeriodNodes(const int d, const int M,
 #pragma omp parallel for schedule(static)
     for (int k=0; k<M; ++k)
         for (int j=0; j<d+1; ++j)
-            if (B[e[k][j]]==4)
+            if (B[e[k][j]]==3)
                 e[k][j] = P[e[k][j]];
     return 0;
 }

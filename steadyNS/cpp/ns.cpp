@@ -19,7 +19,7 @@ int _StiffMatOO_Boundary(const int d, const int N, const int NE,
     // equations derived from boundary conditions
     for (int i=0; i<N+NE; ++i)
     {
-        if (B[i]==4) // periodic nodes i; 
+        if (B[i]==3) // periodic nodes i; 
             // there are no periodic edges since there are no periodic nodes in e
             for (int l=0; l<d; ++l)
             {
@@ -225,7 +225,7 @@ int _countStiffMatData(const int d, const int M, const int N, const int NE,
 #pragma omp parallel for schedule(static) reduction(+:COUNT)
     for (int i=0; i<N+NE; ++i)
     {
-        if (B[i]==4)
+        if (B[i]==3)
             COUNT += d*2;
         else if (B[i]>0)
             COUNT += d;
