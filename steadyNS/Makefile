@@ -1,5 +1,6 @@
 CPP_DIR=cpp
 CPP_INCLUDEDIR=$(CPP_DIR)
+CPPFLAGS=-I $(CPP_INCLUDEDIR) -fopenmp -fPIC -Wall -O3
 
 PY_INCLUDEDIR=$(shell python -c \
 			  "from distutils import sysconfig; \
@@ -22,15 +23,15 @@ poisson.so:poisson.o libpoisson.a
 steadyNS.cpp:steadyNS.pyx steadyNS.pxd
 	cython steadyNS.pyx --cplus -3
 steadyNS.o:steadyNS.cpp
-	g++ -c steadyNS.cpp -O3 -fPIC -Wall -I $(CPP_INCLUDEDIR) -I $(PY_INCLUDEDIR)
+	g++ -c steadyNS.cpp $(CPPFLAGS) -I $(PY_INCLUDEDIR)
 mesh_extension.cpp:mesh_extension.pyx mesh_extension.pxd
 	cython mesh_extension.pyx --cplus -3
 mesh_extension.o:mesh_extension.cpp
-	g++ -c mesh_extension.cpp -O3 -fPIC -Wall -I $(CPP_INCLUDEDIR) -I $(PY_INCLUDEDIR)
+	g++ -c mesh_extension.cpp $(CPPFLAGS) -I $(PY_INCLUDEDIR)
 poisson.cpp:poisson.pyx poisson.pxd
 	cython poisson.pyx --cplus -3
 poisson.o:poisson.cpp
-	g++ -c poisson.cpp -O3 -fPIC -Wall -I $(CPP_INCLUDEDIR) -I $(PY_INCLUDEDIR)
+	g++ -c poisson.cpp $(CPPFLAGS) -I $(PY_INCLUDEDIR)
 
 libsteadyNS.a:
 	+make libsteadyNS.a -C $(CPP_DIR)

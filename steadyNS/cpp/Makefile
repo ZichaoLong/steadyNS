@@ -9,10 +9,10 @@ $(OBJS):%.o:%.cpp
 	g++ -c $(CPPFLAGS) $< -o $@
 libmesh_extension.a:mesh_extension.o
 	ar cr libmesh_extension.a mesh_extension.o 
-libsteadyNS.a:ns.o
-	ar cr libsteadyNS.a ns.o
-libpoisson.a:poisson.o
-	ar cr libpoisson.a poisson.o
+libsteadyNS.a:ns-stiffmat.o utils.o
+	ar cr libsteadyNS.a ns-stiffmat.o utils.o
+libpoisson.a:poisson.o utils.o
+	ar cr libpoisson.a poisson.o utils.o
 
 .PHONY:clean
 clean:
