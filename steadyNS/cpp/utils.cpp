@@ -44,6 +44,26 @@ int _StiffMatOO_Boundary(const int d, const int N, const int NE,
     return 0;
 }
 
+int _RHI_Boundary_v(const int d, const int M, const int N, const int NE, 
+        const int *B, double *rhi)
+{
+    // rhi for boundary conditions
+#pragma omp parallel for schedule(static)
+    for (int i=0; i<N+NE; ++i)
+    {
+        if (B[i]>2) // periodic nodes i and nodes on cylinders/holes
+            for (int l=0; l<d; ++l)
+                rhi[d*i+l] = 0;
+        else if (B[i]==1 || B[i]==2) // inlet and outlet
+        {
+            rhi[d*i] = 1;
+            for (int l=1; l<d; ++l)
+                rhi[d*i+l] = 0;
+        }
+    }
+    return 0;
+}
+
 int CalculateTheta(const int d, const TensorAccessor<const double,2> &Ek,
         const int nQuad, TensorAccessor<const double,2> &Lambda,
         TensorAccessor<double,3> &Theta)
@@ -105,3 +125,27 @@ int UpdateStiffMatTheta2Sum(const int d, const int D, const TensorAccessor<const
     return 0;
 }
 
+int CalculateVU(const int d, const int D, 
+        const int nQuad, const double *W, TensorAccessor<const double,2> &Lambda,
+        TensorAccessor<double,3> &VU)
+{
+    Tensor<double,2> GammaTensor({nQuad,D});
+    TensorAccessor<double,2> Gamma = GammaTensor.accessor();
+
+    int j=0;
+    for (; j<d+1; ++j)
+        for (int i=0; i<nQuad; ++i)
+            Gamma[i][j] = 2*Lambda[i][j]*(Lambda[i][j]-0.5);
+    for (int j1=0; j1<d+1; ++j1)
+        for (int j2=0; j2<j1; ++j2)
+        {
+            for (int i=0; i<nQuad; ++i)
+                Gamma[i][j] = 4*Lambda[i][j1]*Lambda[i][j2];
+            j += 1;
+        }
+    for (int i=0; i<nQuad; ++i)
+        for (int j1=0; j1<D; ++j1)
+            for (int j2=0; j2<D; ++j2)
+                VU[i][j1][j2] = W[i]*Gamma[i][j1]*Gamma[i][j2];
+    return 0;
+}

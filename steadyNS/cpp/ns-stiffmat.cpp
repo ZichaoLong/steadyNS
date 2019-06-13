@@ -116,7 +116,7 @@ int _StiffMatOO(const int C_NUM, const int d, const double nu,
                 e[k], eMeasure[k], Theta1Sum, Theta2Sum, 
                 idx, I, J, data);
         // stiffness matrix for $q_k-q_{k-1}$ and $q_{k+1}-q_k$, 
-        // row=d*(N+NE)+k and d*(N+NE)+k+1 
+        // row=d*(N+NE)+k-1 and d*(N+NE)+k
         _StiffMatOO_q(d, D, M, N, NE, k, e[k], Theta1Sum, 
                 idx, I, J, data);
     }

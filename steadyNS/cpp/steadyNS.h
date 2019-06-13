@@ -52,6 +52,15 @@ int UpdateStiffMatTheta1Sum(const int d, const int D, const TensorAccessor<const
 int UpdateStiffMatTheta2Sum(const int d, const int D, const TensorAccessor<const double,2> &Ek, 
         const int nQuad2, const double *W2, TensorAccessor<const double,2> &Lambda2, 
         TensorAccessor<double,2> &Theta2Sum);
+int _RHI_Boundary_v(const int d, const int M, const int N, const int NE, 
+        const int *B, double *rhi);
+int CalculateVU(const int d, const int D, 
+        const int nQuad, const double *W, TensorAccessor<const double,2> &Lambda,
+        TensorAccessor<double,3> &VU);
+int _RHI(const int d, const int M, const int N, const int NE, 
+        const int *B, const int *ep, const double *Ep, const double *eMeasure, 
+        const int nQuad5, const double *W5, const double *Lambda5p, 
+        const double *UPp, double *rhi);
 
 #ifdef __cplusplus
 }

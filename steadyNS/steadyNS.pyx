@@ -50,3 +50,23 @@ def StiffMat(C_NUM,d,nu,M,N,NE,B,P,e,E,eMeasure):
     C = C.tocsr()
     return C
 
+def RHI(UP,d,M,N,NE,B,e,E,eMeasure):
+    B = np.ascontiguousarray(B)
+    e = np.ascontiguousarray(e)
+    cdef int[::1] B_memview = B
+    cdef int[::1] e_memview = e.reshape(-1)
+    E = np.ascontiguousarray(E)
+    eMeasure = np.ascontiguousarray(eMeasure)
+    cdef double[::1] E_memview = E.reshape(-1)
+    cdef double[::1] eMeasure_memview = eMeasure
+    W5,Lambda5 = QuadPts.quadpts(d,5)
+    cdef double[::1] W5_memview = W5
+    cdef double[::1] Lambda5_memview = Lambda5.reshape(-1)
+    cdef double[::1] UP_memview = UP
+    rhi = np.empty_like(UP)
+    cdef double[::1] rhi_memview = rhi
+    _RHI(d, M, N, NE, &B_memview[0], &e_memview[0], &E_memview[0], 
+            &eMeasure_memview[0], W5.size, &W5_memview[0], &Lambda5_memview[0], 
+            &UP_memview[0], &rhi_memview[0])
+    return rhi
+

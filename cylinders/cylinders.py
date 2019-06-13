@@ -150,6 +150,7 @@ print("e.shape: ", e.shape)
 C_NUM = steadyNS.steadyNS.countStiffMatData(d,M,N,NE,B,P,e)
 print("non-zero number of C_OO=",C_NUM)
 C = steadyNS.steadyNS.StiffMat(C_NUM,d,nu,M,N,NE,B,P,e,E,eMeasure)
+C_sparse = C
 print("C shape=",C.shape)
 print("C nnz=",C.nnz)
 print("condition number of C=",np.linalg.cond(C.todense()))
@@ -163,6 +164,10 @@ for i in range(N):
         for l in range(d):
             index[d*i+l] = False
 print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
+UP = np.zeros(d*(N+NE)+M)
+rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
+UP = np.linalg.solve(C,rhi)
+print(UP)
 
 #%% set global stiff matrix for poisson equation
 C_NUM = steadyNS.poisson.Poisson_countStiffMatData(d,M,N,NE,B,P,e)
