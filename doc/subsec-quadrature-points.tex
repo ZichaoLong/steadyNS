@@ -4,14 +4,14 @@ in the sense of up to a multiplycative constant $|e|$,
 by sum up the function values at quadrature points\cite{chen2008ifem}.
 Thus, given the propriate quadrature points and the corresponding 
 barycentric coordinate $\Lambda$ and weight $W$
-(see Tab.\ref{tab:quadrature-points-2d} and Tab.\ref{tab:quadrature-points-3d}),
+(for example, see Tab.\ref{tab:quadrature-points-2d} and Tab.\ref{tab:quadrature-points-3d}),
 the integral of an n-th order polynomial $g(x)$ can be writen as 
 \begin{equation}\label{eq:quadrature-points-integral}
   \int_e g(x)\ud x=|e|\sum_{i=0}^{\text{nQuad}}W_n[i]g(\sum_{j=0}^{d}\lambda_n[i,j]e^j)
 \end{equation}
 \begin{table}[ht]
   \centering
-  \caption{2D-case: Quadrature Points for polynomials with Order 1,2,3, 
+  \caption{2D-case: Quadrature Points for polynomials with Order 1,2, 
   where $\Lambda[i,j]$ is $j$-th barycentric coordinate of $i$-th quadrature point equipment with a weight $W_i$. 
   In this report, only Order 2 will be used.}
   \label{tab:quadrature-points-2d}
@@ -56,7 +56,7 @@ the integral of an n-th order polynomial $g(x)$ can be writen as
 \end{table}
 \begin{table}[ht]
   \centering
-  \caption{3D-case: Quadrature Points for polynomials with Order 1,2,3,
+  \caption{3D-case: Quadrature Points for polynomials with Order 1,2,
   where $\Lambda[i,j]$ is $j$-th barycentric coordinate of $i$-th quadrature point equipment with a weight $W_i$,
   The parameters for the case of Order 2 are set as follows:$\alpha = 0.5854101966249685; \beta = 0.138196601125015 $.
   In this report, only Order 2 will be used.}

@@ -7,19 +7,19 @@ where, with notations of Einstein summation, the $u_h^{n-1},u_h^n,p_h^n$ reads a
 \begin{equation}\label{eq:uf-linear-approximation}
   u_h^{n-1}=\alpha_i^{n-1}v_i,u_h^n=\alpha_i^nv_i,p_h^n=\beta_k^nq_k
 \end{equation}
-The variables to be solved are $\{\alpha_i^n\}_{i=0}^{N+NE-1}$ and $\{\beta_i^n\}_{i=0}^{M-1}$, in each iteration, 
-and in this sub-section we will talk about their corresponding equations in analytical form.
+In each iteration the variables to be solved are $\{\alpha_i^n\}_{i=0}^{N+NE-1}$ and $\{\beta_i^n\}_{i=0}^{M-1}$.
+In this sub-section we will talk about their corresponding equations in analytical form.
 The details on how to construct element stiffness matrix and assemble global stiffness matrix 
 will be introduced later.
 
 \paragraph{Equations Derived from Boundary}
 \begin{itemize}
   \item $\alpha_i=(1,0,0)^\top \text{ or } (1,0)^\top$ if $B_i=1$ or $2$
-  \item $\alpha_i=(0,0,0)^\top \text{ or } (0,0)^\top$ if $B_i=3$
-  \item $\alpha_i=\alpha_j,$ if $B_i=4$ and $P_i=j$, i.e. $j$ is the source node of $i$.
+  \item $\alpha_i=\alpha_j,$ if $B_i=3$ and $P_i=j$, i.e. $j$ is the source node of $i$.
+  \item $\alpha_i=(0,0,0)^\top \text{ or } (0,0)^\top$ if $B_i=4$
 \end{itemize}
 
-\paragraph{Equations Derived from Test Function $v_h$}
+\paragraph{Equations Derived from Test Function $v_h^{i,l}$}
 We denote $\alpha^l=[\alpha^l[l']]_{l'=0}^d\in\mr^{d\times1}$ where
 \begin{equation}\label{eq:basis-alpha}
   \alpha^l[l']=\left\{

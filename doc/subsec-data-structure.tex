@@ -10,18 +10,20 @@ The data structure reads as follows:
 
   \item Node tag: $B=\{B_i:i=0,\cdots,N+NE-1\}$, which defines the physical information of $i$-th point of degree of freedom.
     \begin{description}
-      \item[0] interior node
+      \item[-1] periodic source node
+      \item[0] interior node. We will merge periodic node and source node 
+        before construct edges in every element. 
+        So we set $B[i]=0, \forall i\geq N$
       \item[1] inlet, where $u=(1,0,0)^\top$
       \item[2] outlet, where $u=(1,0,0)^\top$
-      \item[3] noslip wall, where $u=(0,0,0)^\top$. 
+      \item[3] periodic node
+      \item[4] noslip wall, where $u=(0,0,0)^\top$. 
         Velocity value $u$ on the surface of cylinders/spheres can be changed 
         if angular velocity $\omega\neq0$. Here we only consider flow past still cylinders/spheres.
-      \item[4] periodic node
-      \item[-1] periodic source node
     \end{description}
     Only those nodes with tag $B_i=0$ or $B_i=-1$ have degrees of freedom.
 
-  \item Periodic points indices: $P=\{P_i\in\{-1,0,1,\cdots,N+NE-1\}\}_{i=0}^{N+NE-1}$.
+  \item Periodic points indices: $P=\{P_i\in\{-1,0,1,\cdots,N-1\}\}_{i=0}^{N}$.
     \[
       P_i=\left\{\begin{array}{ll}
         j, & A_j \text{ is the source node of } A_i \\
@@ -29,7 +31,7 @@ The data structure reads as follows:
       \end{array}\right.
       \]
     which satisfies $P_i=-1\forall i\in \{P_j\}$, 
-    i.e. each source node do not have source node.
+    i.e. each source node do not have source node. 
 
   \item $M$ elements: $\{e_k:k=0,\cdots,M-1\}\subset\{0,1,\cdots,N+NE-1\}^{(d+1)(d+2)/2}$. 
     Each simplex element $e_k$, e.g. triangle or tetrahedron, 

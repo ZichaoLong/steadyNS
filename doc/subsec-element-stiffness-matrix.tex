@@ -1,7 +1,7 @@
 \subsection{Element Stiffness Matrix}
 Without loss of generality, we assume that $e_k=\{i_j\}_{j=0}^{(d+1)(d+2)/2}$.
 We denote $\lambda^j(x)$ as the barycentric coordinate with respect to 
-the node $A_{i_{j(j+3)/2}}$ of $e_k$. 
+the node $A_{i_j}$ of $e_k$. 
 We denote $\lambda^j_2(x)$ as the basis function with respect to 
 the node/edge $A_{i_j}$.
 Apparently the basis function $v_{i_j}$ is equal to $\lambda^j_2$ in $e_k$.
@@ -26,7 +26,7 @@ and so do $u_h^{n-1},u_h^n$.
 
 \textbf{From now on}, we will study element stiffness matrix when we apply 
 a set of test functions $v^{j,l}:e_k\to\mr^{d}$ and 
-$|e_{k-1}|q_k-|e_k|q_k$ to the equation 
+$q_k-q_k$ to the equation 
 Eq.(\ref{eq:equation-testv-interior},~\ref{eq:equation-testv-period},~\ref{eq:equation-testq}) respectively, where
 \[v^{j,l}(x)=\lambda_2^j(x)\alpha^l\in\mr^{d},l=0,\cdots,d-1,j=0,\cdots,(d+1)(d+2)/2-1,\]
 in which $\alpha^l=[\alpha^l[l']]_{l'=0}^d\in\mr^{d}$ 
@@ -42,18 +42,17 @@ $l=0,\cdots,d-1,j=0,\cdots,(d+1)(d+2)/2$ we have
 
 \paragraph{$\bm{-\int_{e_k}v^{j_0,l}(x)\cdot(u_h^{n-1}(x)\cdot\nabla)
 u_h^{n-1}(x)\ud x
-\text{ and }\frac{1}{2}\int_{e_k}(\nabla\cdot u_h^{n-1}(x))v^{j_0,l}(x)
+\text{ and }-\frac{1}{2}\int_{e_k}(\nabla\cdot u_h^{n-1}(x))v^{j_0,l}(x)
 \cdot u_h^{n-1}(x)\ud x}$}
-Similarly, by using Eq.\eqref{eq:integral-compare-vugu-guvu}, 
-for $l=0,\cdots,d-1,j=0,\cdots,(d+1)(d+2)/2$ we obtain
+Similarly, for $l=0,\cdots,d-1,j=0,\cdots,(d+1)(d+2)/2$ we obtain
 \begin{equation}
   \begin{split}
     -\int_{e_k} v^{j_0,l}(x)\cdot(u_h^{n-1}(x)\cdot\nabla)u_h^{n-1}(x)\ud x
-    &= -|e_k|\sum_{l',j_1,j_2}\sum_iVU_5[i,j_0,j_1]\Theta_5^{e_k}[i,j_2,l']\cdot 
-    U^{n-1}_k[j_1,l']U^{n-1}_k[j_2,l] \\
-    \frac12\int_{e_k}(\nabla\cdot u_h^{n-1}(x))v^{j_0,l}(x)\cdot u_h^{n-1}(x)\ud x
-    &= \frac{|e_k|}2\sum_{l',j_1,j_2}\sum_i VU_5[i,j_0,j_2]\Theta_5^{e_k}[i,j_1,l']
-    \cdot U^{n-1}_k[j_1,l']U^{n-1}_k[j_2,l] 
+    &= -|e_k|\sum_iW_5[i]\cdot\Gamma_5[i,j_0]\cdot
+    \sum_{l1}U_n[i,l1]\cdot GU_n[i,l,l1] \\
+    -\frac12\int_{e_k}(\nabla\cdot u_h^{n-1}(x))v^{j_0,l}(x)\cdot u_h^{n-1}(x)\ud x
+    &= -\frac{|e_k|}2\sum_iW_5[i]\cdot\sum_{l1}GU_n[i,l1,l1]
+    \cdot \Gamma_5[i,j0] \cdot U_n[i,l]
   \end{split}
 \end{equation}
 
