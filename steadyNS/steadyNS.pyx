@@ -70,3 +70,15 @@ def RHI(UP,d,M,N,NE,B,e,E,eMeasure):
             &UP_memview[0], &rhi_memview[0])
     return rhi
 
+def setUP(UP,B,d,M,N,NE):
+    cdef int[::1] B_memview = B
+    cdef double[::1] UP_memview = UP
+    cdef int i=0;
+    for i in range(N+NE):
+        for l in range(d):
+            UP_memview[d*i+l] = 0
+        if B_memview[i]==1 or B_memview[i]==2:
+            UP_memview[d*i] = 1;
+    for i in range(d*(N+NE),d*(N+NE)+M):
+        UP_memview[i] = 0
+    return UP

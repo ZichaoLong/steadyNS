@@ -12,33 +12,6 @@
 #include "ASTen/Tensor.h"
 using std::cout; using std::endl; using std::ends;
 
-int _RHI_v(const int d, const int D, const int *B, 
-        const TensorAccessor<const int,1> &ek, const double ekMeasure, 
-        TensorAccessor<double,4> VUTheta5, 
-        const double *UPp, double *rhi)
-{
-    int row=-1;
-    double tmp = 0;
-    // stiffness matrix for $v^{j0,l}$, row=d*ek[j0]+l
-    for (int j0=0; j0<D; ++j0)
-    {
-        if (B[ek[j0]]>0) continue; // boundary equations have been set done
-        for (int l=0; l<d; ++l)
-        {
-            tmp = 0;
-            for (int j1=0; j1<D; ++j1)
-                for (int j2=0; j2<D; ++j2)
-                    for (int l1=0; l1<d; ++l1)
-                        tmp += VUTheta5[j0][j1][j2][l1]
-                            *(2*UPp[d*ek[j1]+l1]*UPp[d*ek[j2]+l]
-                             +UPp[d*ek[j2]+l1]*UPp[d*ek[j1]+l]);
-            row = d*ek[j0]+l;
-            rhi[row] -= 0.5*ekMeasure*tmp;
-        }
-    }
-    return 0;
-}
-
 int _RHI(const int d, const int M, const int N, const int NE, 
         const int *B, const int *ep, const double *Ep, const double *eMeasure, 
         const int nQuad5, const double *W5, const double *Lambda5p, 
@@ -59,30 +32,52 @@ int _RHI(const int d, const int M, const int N, const int NE,
 
     _RHI_Boundary_v(d, M, N, NE, B, rhi);
 
-    Tensor<double,3> VU5Tensor({nQuad5,D,D});
-    TensorAccessor<double,3> VU5 = VU5Tensor.accessor();
-    CalculateVU(d, D, nQuad5, W5, Lambda5, VU5);
-
     // coefficients derived from test function in $e_k$
     for (int k=0; k<M; ++k)
     {
+        Tensor<double,2> UeTensor({D,d});
+        TensorAccessor<double,2> Ue = UeTensor.accessor();
+        for (int j=0; j<D; ++j) // update Ue
+            for (int l=0; l<d; ++l)
+                Ue[j][l] = UPp[d*e[k][j]+l];
+
+        Tensor<double,2> Gamma5Tensor({nQuad5,D});
+        TensorAccessor<double,2> Gamma5 = Gamma5Tensor.accessor();
+        CalculateGamma(d, D, nQuad5, Lambda5.ConstAccessor(), Gamma5);
+
+        Tensor<double,2> U5Tensor({nQuad5,d});
+        TensorAccessor<double,2> U5 = U5Tensor.accessor();
+        CalculateU(d, D, nQuad5, Gamma5.ConstAccessor(), Ue.ConstAccessor(), U5);
+
         Tensor<double,3> Theta5Tensor({nQuad5,D,d});
         TensorAccessor<double,3> Theta5 = Theta5Tensor.accessor();
-        CalculateTheta(d, E[k], nQuad5, Lambda5, Theta5);
-        Tensor<double,4> VUTheta5Tensor({D,D,D,d});
-        TensorAccessor<double,4> VUTheta5 = VUTheta5Tensor.accessor();
-        double tmp = 0;
+        CalculateTheta(d, E[k], nQuad5, Lambda5.ConstAccessor(), Theta5);
+
+        Tensor<double,3> GU5Tensor({nQuad5,d,d});
+        TensorAccessor<double,3> GU5 = GU5Tensor.accessor();
+        CalculateGU(d, D, nQuad5, Theta5.ConstAccessor(), Ue.ConstAccessor(), GU5);
+
+        Tensor<double,2> UGU5Tensor({nQuad5,d});
+        TensorAccessor<double,2> UGU5 = UGU5Tensor.accessor();
+        CalculateUGU(d, nQuad5, U5.ConstAccessor(), GU5.ConstAccessor(), UGU5);
+
+        Tensor<double,1> TrGU5Tensor({nQuad5});
+        TensorAccessor<double,1> TrGU5 = TrGU5Tensor.accessor();
+        CalculateTrGU(d, nQuad5, GU5.ConstAccessor(), TrGU5);
+
+        int row = -1;
+        // stiffness matrix for $v^{j0,l}$, row=d*e[k][j0]+l
         for (int j0=0; j0<D; ++j0)
-            for (int j1=0; j1<D; ++j1)
-                for (int j2=0; j2<D; ++j2)
-                    for (int l=0; l<d; ++l)
-                    {
-                        tmp = 0;
-                        for (int i=0; i<nQuad5; ++i)
-                            tmp += VU5[i][j0][j1]*Theta5[i][j2][l];
-                        VUTheta5[j0][j1][j2][l] = tmp;
-                    }
-        _RHI_v(d, D, B, e[k], eMeasure[k], VUTheta5, UPp, rhi);
+        {
+            if (B[e[k][j0]]>0) continue; // boundary equations have been set done
+            for (int l=0; l<d; ++l)
+            {
+                row = d*e[k][j0]+l;
+                for (int i=0; i<nQuad5; ++i)
+                    rhi[row] -= eMeasure[k]*W5[i]*Gamma5[i][j0]*
+                        (UGU5[i][l]+0.5*TrGU5[i]*U5[i][l]);
+            }
+        }
     }
     return 0;
 }

@@ -5,6 +5,8 @@ python cylinders.py caseName clscale x1 y1 r1 x2 y2 r2 ...
 import gmsh
 import math
 import numpy as np
+import scipy as sp
+import scipy.sparse.linalg
 import sys
 import steadyNS
 
@@ -12,8 +14,8 @@ nu = 0.1
 d = 2;
 maxx = 16;
 maxy = 4;
-lcar1 = 1;
-lcar2 = 0.2;
+lcar1 = 0.8;
+lcar2 = 0.8;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
 else:
@@ -153,21 +155,24 @@ C = steadyNS.steadyNS.StiffMat(C_NUM,d,nu,M,N,NE,B,P,e,E,eMeasure)
 C_sparse = C
 print("C shape=",C.shape)
 print("C nnz=",C.nnz)
-print("condition number of C=",np.linalg.cond(C.todense()))
-C = C.todense()
-values,vectors = np.linalg.eig(C)
-vectors = np.array(vectors)
-index = np.ndarray(C.shape[0],dtype=np.bool)
-index[:] = True
-for i in range(N):
-    if (B[i]==1 or B[i]==2 or B[i]==4):
-        for l in range(d):
-            index[d*i+l] = False
-print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
+if C.shape[0]<2000:
+    print("condition number of C=",np.linalg.cond(C.todense()))
+    C = C.todense()
+    values,vectors = np.linalg.eig(C)
+    vectors = np.array(vectors)
+    index = np.ndarray(C.shape[0],dtype=np.bool)
+    index[:] = True
+    for i in range(N):
+        if (B[i]==1 or B[i]==2 or B[i]==4):
+            for l in range(d):
+                index[d*i+l] = False
+    print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
 UP = np.zeros(d*(N+NE)+M)
-rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
-UP = np.linalg.solve(C,rhi)
-print(UP)
+steadyNS.steadyNS.setUP(UP,B,d,M,N,NE)
+for i in range(10):
+    rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
+    UP = sp.sparse.linalg.spsolve(C_sparse,rhi)
+    print(UP)
 
 #%% set global stiff matrix for poisson equation
 C_NUM = steadyNS.poisson.Poisson_countStiffMatData(d,M,N,NE,B,P,e)
@@ -175,19 +180,20 @@ print("non-zero number of C_OO=",C_NUM)
 C = steadyNS.poisson.Poisson_StiffMat(C_NUM,d,nu,M,N,NE,B,P,e,E,eMeasure)
 print("C shape=",C.shape)
 print("C nnz=",C.nnz)
-print("condition number of C=",np.linalg.cond(C.todense()))
-C = C.todense()
-values,vectors = np.linalg.eig(C)
-vectors = np.array(vectors)
-index = np.ndarray(C.shape[0],dtype=np.bool)
-index[:] = True
-for i in range(N):
-    if (B[i]==1 or B[i]==2 or B[i]==4):
-        for l in range(d):
-            index[d*i+l] = False
-print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
-values2,vectors2 = np.linalg.eig(C[::2,::2])
-print(np.linalg.norm(np.repeat(np.sort(values2),2)-np.sort(values)))
+if C.shape[0]<2000:
+    print("condition number of C=",np.linalg.cond(C.todense()))
+    C = C.todense()
+    values,vectors = np.linalg.eig(C)
+    vectors = np.array(vectors)
+    index = np.ndarray(C.shape[0],dtype=np.bool)
+    index[:] = True
+    for i in range(N):
+        if (B[i]==1 or B[i]==2 or B[i]==4):
+            for l in range(d):
+                index[d*i+l] = False
+    print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
+    values2,vectors2 = np.linalg.eig(C[::2,::2])
+    print(np.linalg.norm(np.repeat(np.sort(values2),2)-np.sort(values)))
 
 #%%
 if len(sys.argv)<=1:
