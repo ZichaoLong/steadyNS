@@ -65,21 +65,19 @@ factory.addLine(4,1,4)
 
 BoxCurveLoopTag = factory.addCurveLoop([1,2,3,4])
 factory.synchronize()
-model.mesh.setPeriodic(dim=1, tags=[3,], tagsMaster=[1,], affineTransform=[1,0,0,0, 0,1,0,maxy, 0,0,1,0, 0,0,0,0]);
-
 
 #%% add box physical groups
 PhysicalInletNodes = 1
 PhysicalOutletNodes = 2
-PhysicalPeriodBoundary = 3
+PhysicalFixWall = 3
 PhysicalInlet = 1
 PhysicalOutlet = 2
 model.addPhysicalGroup(dim=0, tags=[1,4], tag=PhysicalInletNodes)
 model.setPhysicalName(dim=0, tag=PhysicalInletNodes, name='PhysicalInletNodes')
 model.addPhysicalGroup(dim=0, tags=[2,3], tag=PhysicalOutletNodes)
 model.setPhysicalName(dim=0, tag=PhysicalOutletNodes, name='PhysicalOutletNodes')
-model.addPhysicalGroup(dim=1, tags=[1,3], tag=PhysicalPeriodBoundary)
-model.setPhysicalName(dim=1, tag=PhysicalPeriodBoundary, name='PhysicalPeriodBoundary')
+model.addPhysicalGroup(dim=1, tags=[1,3], tag=PhysicalFixWall)
+model.setPhysicalName(dim=1, tag=PhysicalFixWall, name='PhysicalFixWall')
 model.addPhysicalGroup(dim=1, tags=[4,], tag=PhysicalInlet)
 model.setPhysicalName(dim=1, tag=PhysicalInlet, name='PhysicalInlet')
 model.addPhysicalGroup(dim=1, tags=[2,], tag=PhysicalOutlet)
@@ -138,14 +136,14 @@ PhysicalOutlet = PhysicalOutlet
 PhysicalHoleBoundary = PhysicalCylinderBoundary
 #%% set coordinates and node boundaries
 N,coord,B,P = steadyNS.mesh.P1Nodes(d, 
-        PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary)
+        PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary, PhysicalFixWall)
 
 #%% set elements
 M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B, P)
 
 steadyNS.mesh.P1Check(coord,B,P,e,Cylinders,maxx=16)
 
-NE,B,e = steadyNS.mesh.P2Elements(d, B, e)
+NE,B,e = steadyNS.mesh.P2Elements(d, B, e, coord)
 assert(B.shape[0]==NE+N)
 print("edge number: ", NE)
 print("e.shape: ", e.shape)

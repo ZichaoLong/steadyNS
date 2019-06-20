@@ -138,9 +138,7 @@ int _countStiffMatData(const int d, const int M, const int N, const int NE,
 #pragma omp parallel for schedule(static) reduction(+:COUNT)
     for (int i=0; i<N+NE; ++i)
     {
-        if (B[i]==3)
-            COUNT += d*2;
-        else if (B[i]>0)
+        if (B[i]>0)
             COUNT += d;
     }
 #pragma omp parallel for schedule(static) reduction(+:COUNT)

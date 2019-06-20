@@ -6,7 +6,7 @@ from .mesh_extension import reduceP,mergePeriodicNodes,switchEdgeNode,updateEdge
 model = gmsh.model
 factory = model.geo
 
-def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary):
+def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary, PhysicalFixWall):
     # all nodes
     nodeTags,coord = model.mesh.getNodesForPhysicalGroup(dim=d,tag=PhysicalWholeDomain)
     nodeTags -= 1
@@ -30,27 +30,11 @@ def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleB
     NoslipWallNodeTags -= 1
     B[NoslipWallNodeTags] = 4
 
-    # periodic nodes pair
+    # Fix wall nodes
     P = np.zeros(N,dtype=np.int32)-1
-    _,nodeTagsSlaver,nodeTagsMaster,_ = model.mesh.getPeriodicNodes(1,3) # TODO: it's not compatible with 3d case
-    nodesPair = np.stack([nodeTagsSlaver,nodeTagsMaster],axis=-1)
-    nodesPair = np.array(nodesPair).astype(np.int32)
-    nodesPair -= 1
-    # nodesPair = nodesPair[B[nodesPair[:,0]]==0]
-    P[nodesPair[:,0]] = nodesPair[:,1]
-    P = reduceP(P)
-    ## reduceP, implement in python script
-    # for i in range(N):
-    #     if P[i]!=-1:
-    #         if P[P[i]]!=-1:
-    #             P[i] = P[P[i]]
-    ##
-    tmp = P!=-1
-    assert(np.all(P[P[tmp]]==-1))
-    B[tmp] = 3
-    tmp = P[tmp]
-    tmp = tmp[B[tmp]==0]
-    B[tmp] = -1 # mark all non-boundary source nodes
+    FixWallNodeTags,_ = model.mesh.getNodesForPhysicalGroup(dim=d-1,tag=PhysicalFixWall)
+    FixWallNodeTags -= 1
+    B[FixWallNodeTags] = 3
     return N,coord,B,P
 
 def P1Elements(d, WholeDomainTag, coord, B, P):
@@ -66,10 +50,9 @@ def P1Elements(d, WholeDomainTag, coord, B, P):
     eMeasure = 1/math.gamma(d)*np.abs(np.linalg.det(E))
     E = np.linalg.inv(E)[...,1:]
     E = np.ascontiguousarray(E)
-    e = mergePeriodicNodes(B,P,e)
     return M,e,E,eMeasure
 
-def P2Elements(d, B, e):
+def P2Elements(d, B, e, coord):
     EdgeNumPerElem = (d+1)*d//2
     N = len(B)
     M = len(e)
@@ -85,7 +68,7 @@ def P2Elements(d, B, e):
             np.unique(Edge,return_inverse=True,axis=0)
     unique_inverse = unique_inverse.astype(np.int32)
     NE = len(Edge)
-    Bedge = updateEdgeTags(Edge,B)
+    Bedge = updateEdgeTags(d,Edge,B,coord)
     B = np.concatenate((B,Bedge),axis=0)
     elem2edge = unique_inverse.reshape(EdgeNumPerElem, M).transpose()+N
     e = np.concatenate((e,elem2edge),axis=1)

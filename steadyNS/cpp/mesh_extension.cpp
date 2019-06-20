@@ -45,8 +45,8 @@ int _switchEdgeNode(const int L, int *Edge)
     return 0;
 }
 
-int _updateEdgeTags(const int N, const int NE, const int *Edge, 
-        const int *B, int *Bedge)
+int _updateEdgeTags(const int d, const int N, const int NE, const int *Edge, 
+        const int *B, const double *coord, int *Bedge)
 {
     int tag1,tag2;
 #pragma omp parallel for schedule(static) private(tag1,tag2)
@@ -56,11 +56,30 @@ int _updateEdgeTags(const int N, const int NE, const int *Edge,
         tag2 = B[Edge[2*i+1]];
         if (tag1==0 || tag2==0)
             Bedge[i] = 0;
-        else if (tag1==-1 || tag2==-1)
-            Bedge[i] = -1;
         else if (tag1==tag2)
             Bedge[i] = tag1;
-        else 
+        else if (tag1<4 && tag2<4)
+        {
+            double tmp = coord[d*Edge[2*i]]-coord[d*Edge[2*i+1]];
+            tmp = tmp*tmp;
+            if (tmp<1e-16)
+            {
+                if (tag1<3 && tag2==3)
+                    Bedge[i] = tag1;
+                else if (tag1==3 && tag2<3)
+                    Bedge[i] = tag2;
+                else
+                {
+                    cout << "error" << endl;
+                    exit(0);
+                }
+            }
+            else
+            {
+                Bedge[i] = 0;
+            }
+        }
+        else
         {
             cout << "error" << endl;
             exit(0);

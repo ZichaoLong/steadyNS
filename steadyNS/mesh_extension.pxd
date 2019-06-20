@@ -6,6 +6,6 @@ cdef extern from "steadyNS.h":
     int _mergePeriodNodes(const int d, const int M,
        const int *B, const int *P, int *ep)
     int _switchEdgeNode(const int L, int *Edge)
-    int _updateEdgeTags(const int N, const int NE, const int *Edge, 
-            const int *B, int *Bedge)
+    int _updateEdgeTags(const int d, const int N, const int NE, const int *Edge, 
+            const int *B, const double *coord, int *Bedge)
 

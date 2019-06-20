@@ -18,21 +18,7 @@ int _StiffMatOO_Boundary(const int d, const int N, const int NE,
 {
     // equations derived from boundary conditions
     for (int i=0; i<N+NE; ++i)
-    {
-        if (B[i]==3) // periodic nodes i; 
-            // there are no periodic edges since there are no periodic nodes in e
-            for (int l=0; l<d; ++l)
-            {
-                I[idx] = d*i+l;
-                J[idx] = d*i+l;
-                data[idx] = 1;
-                ++idx;
-                I[idx] = d*i+l;
-                J[idx] = d*P[i]+l; // source nodes P[i]
-                data[idx] = -1;
-                ++idx;
-            }
-        else if (B[i]>0) // Dirichlet boundaries
+        if (B[i]>0) // Dirichlet boundaries
             for (int l=0; l<d; ++l)
             {
                 I[idx] = d*i+l;
@@ -40,7 +26,6 @@ int _StiffMatOO_Boundary(const int d, const int N, const int NE,
                 data[idx] = 1;
                 ++idx;
             }
-    }
     return 0;
 }
 
@@ -51,10 +36,10 @@ int _RHI_Boundary_v(const int d, const int M, const int N, const int NE,
 #pragma omp parallel for schedule(static)
     for (int i=0; i<N+NE; ++i)
     {
-        if (B[i]>2) // periodic nodes i and nodes on cylinders/holes
+        if (B[i]>3) // nodes on cylinders/holes
             for (int l=0; l<d; ++l)
                 rhi[d*i+l] = 0;
-        else if (B[i]==1 || B[i]==2) // inlet and outlet
+        else if (B[i]>0) // inlet and outlet and fix walls
         {
             rhi[d*i] = 1;
             for (int l=1; l<d; ++l)
