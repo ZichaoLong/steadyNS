@@ -32,7 +32,7 @@ def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleB
 
     # periodic nodes pair
     P = np.zeros(N,dtype=np.int32)-1
-    _,nodeTagsSlaver,nodeTagsMaster,_ = model.mesh.getPeriodicNodes(1,3)
+    _,nodeTagsSlaver,nodeTagsMaster,_ = model.mesh.getPeriodicNodes(1,3) # TODO: it's not compatible with 3d case
     nodesPair = np.stack([nodeTagsSlaver,nodeTagsMaster],axis=-1)
     nodesPair = np.array(nodesPair).astype(np.int32)
     nodesPair -= 1

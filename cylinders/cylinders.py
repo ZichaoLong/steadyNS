@@ -9,13 +9,14 @@ import scipy as sp
 import scipy.sparse.linalg
 import sys
 import steadyNS
+from zlong_pltutils import *
 
-nu = 0.1
+nu = 1
 d = 2;
-maxx = 16;
+maxx = 20;
 maxy = 4;
-lcar1 = 0.8;
-lcar2 = 0.8;
+lcar1 = 0.3;
+lcar2 = 0.3;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
 else:
@@ -42,6 +43,7 @@ model.add("cylinder")
 Cylinders = []
 if len(argv)<3:
     Cylinders.append(dict(x=4,y=2,d=1))
+    Cylinders.append(dict(x=7,y=2,d=1))
 else:
     k = 0
     while len(argv)-k>=3:
@@ -169,6 +171,15 @@ if C.shape[0]<2000:
     print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
 UP = np.zeros(d*(N+NE)+M)
 steadyNS.steadyNS.setUP(UP,B,d,M,N,NE)
+
+#%%
+rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
+UP = sp.sparse.linalg.spsolve(C_sparse,rhi)
+print(UP)
+pltnewaxis3d().plot_trisurf(coord[:,0],coord[:,1],UP[:d*N:d],cmap='jet')
+pltnewaxis3d().plot_trisurf(coord[:,0],coord[:,1],UP[1:d*N:d],cmap='jet')
+
+#%%
 for i in range(10):
     rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
     UP = sp.sparse.linalg.spsolve(C_sparse,rhi)
