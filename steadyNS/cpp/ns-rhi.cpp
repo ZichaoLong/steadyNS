@@ -30,8 +30,6 @@ int _RHI(const int d, const int M, const int N, const int NE,
     for (int i=0; i<d*(N+NE)+M; ++i)
         rhi[i] = 0; // initialize all elements as 0
 
-    _RHI_Boundary_v(d, M, N, NE, B, rhi);
-
     // coefficients derived from test function in $e_k$
     for (int k=0; k<M; ++k)
     {

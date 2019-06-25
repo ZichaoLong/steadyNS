@@ -12,30 +12,6 @@
 #include "ASTen/TensorAccessor.h"
 using std::cout; using std::endl; using std::ends;
 
-int _reduceP(const int N, int *P)
-{
-    for (int i=0; i<N; ++i)
-    {
-        if (P[i]!=-1)
-            if (P[P[i]]!=-1) P[i] = P[P[i]];
-    }
-    return 0;
-}
-
-int _mergePeriodNodes(const int d, const int M,
-        const int *B, const int *P, int *ep)
-{
-    int esize[] = {M,d+1};
-    int estride[] = {d+1,1};
-    TensorAccessor<int,2> e(ep,esize,estride);
-#pragma omp parallel for schedule(static)
-    for (int k=0; k<M; ++k)
-        for (int j=0; j<d+1; ++j)
-            if (B[e[k][j]]==3)
-                e[k][j] = P[e[k][j]];
-    return 0;
-}
-
 int _switchEdgeNode(const int L, int *Edge)
 {
 #pragma omp parallel for schedule(static)
@@ -70,7 +46,7 @@ int _updateEdgeTags(const int d, const int N, const int NE, const int *Edge,
                     Bedge[i] = tag2;
                 else
                 {
-                    cout << "error" << endl;
+                    cout << "Encounter unknown node tags. exit(0)" << endl;
                     exit(0);
                 }
             }
@@ -81,7 +57,7 @@ int _updateEdgeTags(const int d, const int N, const int NE, const int *Edge,
         }
         else
         {
-            cout << "error" << endl;
+            cout << "One of the holes is too close to wall! exit(0);" << endl;
             exit(0);
         }
     }

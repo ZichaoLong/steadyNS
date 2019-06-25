@@ -12,39 +12,6 @@
 #include "ASTen/Tensor.h"
 using std::cout; using std::endl; using std::ends;
 
-int _StiffMatOO_Boundary(const int d, const int N, const int NE, 
-        const int *B, const int *P, 
-        int &idx, int *I, int *J, double *data)
-{
-    // equations derived from boundary conditions
-    for (int i=0; i<N+NE; ++i)
-        if (B[i]>0) // Dirichlet boundaries
-            for (int l=0; l<d; ++l)
-            {
-                I[idx] = d*i+l;
-                J[idx] = d*i+l;
-                data[idx] = 1;
-                ++idx;
-            }
-    return 0;
-}
-
-int _RHI_Boundary_v(const int d, const int M, const int N, const int NE, 
-        const int *B, double *rhi)
-{
-    // rhi for boundary conditions
-#pragma omp parallel for schedule(static)
-    for (int i=0; i<N+NE; ++i)
-    {
-        if (B[i]>0)
-            for (int l=0; l<d; ++l)
-                rhi[d*i+l] =0;
-        if (B[i]>3)
-            rhi[d*i] = -1;
-    }
-    return 0;
-}
-
 int UpdateStiffMatTheta1Sum(const int d, const int D, const TensorAccessor<const double,2> &Ek,
         const int nQuad1, const double *W1, const TensorAccessor<const double,2> &Lambda1,
         TensorAccessor<double,2> &Theta1Sum)

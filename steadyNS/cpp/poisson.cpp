@@ -19,20 +19,17 @@ int _Poisson_StiffMatOO_v(const int d, const int D, const int N, const int NE,
         int &idx, int *I, int *J, double *data)
 {
     int row=-1;
-    // stiffness matrix for $v^{j0,l}$, row=d*ek[j0]+l
+    // stiffness matrix for $v^{j0}$, row=ek[j0]
     for (int j0=0; j0<D; ++j0)
     {
-        if (B[ek[j0]]>0) continue; // boundary equations have been set done
-        for (int l=0; l<d; ++l)
+        if (B[ek[j0]]>0) continue; 
+        row = ek[j0];
+        for (int j1=0; j1<D; ++j1)
         {
-            row = d*ek[j0]+l;
-            for (int j1=0; j1<D; ++j1)
-            {
-                I[idx] = row;
-                J[idx] = d*ek[j1]+l;
-                data[idx] = nu*ekMeasure*Theta2Sum[j0][j1];
-                ++idx;
-            }
+            I[idx] = row;
+            J[idx] = ek[j1];
+            data[idx] = nu*ekMeasure*Theta2Sum[j0][j1];
+            ++idx;
         }
     }
     return 0;
@@ -40,7 +37,7 @@ int _Poisson_StiffMatOO_v(const int d, const int D, const int N, const int NE,
 
 int _Poisson_StiffMatOO(const int C_NUM, const int d, const double nu,
         const int M, const int N, const int NE, 
-        const int *B, const int *P, const int *ep, 
+        const int *B, const int *ep, 
         const double *Ep, const double *eMeasure, 
         const int nQuad2, const double *W2, const double *Lambda2p, 
         int *I, int *J, double *data)
@@ -55,8 +52,6 @@ int _Poisson_StiffMatOO(const int C_NUM, const int d, const double nu,
     TensorAccessor<const double,2> Lambda2(Lambda2p,Lambda2size,Lambda2stride);
 
     int idx = 0;
-    // equations derived from boundary conditions
-    _StiffMatOO_Boundary(d, N, NE, B, P, idx, I, J, data);
 
     Tensor<double,2> Theta2SumTensor({D,D});
     TensorAccessor<double,2> Theta2Sum = Theta2SumTensor.accessor();
@@ -65,7 +60,7 @@ int _Poisson_StiffMatOO(const int C_NUM, const int d, const double nu,
     {
         // update Theta2Sum
         UpdateStiffMatTheta2Sum(d, D, E[k], nQuad2, W2, Lambda2, Theta2Sum);
-        // stiffness matrix for $v^{j0,l}$, row=d*e[k][j0]+l
+        // stiffness matrix for $v^{j0}$, row=e[k][j0]
         _Poisson_StiffMatOO_v(d, D, N, NE, k, nu, B, 
                 e[k], eMeasure[k], Theta2Sum, 
                 idx, I, J, data);
@@ -74,7 +69,7 @@ int _Poisson_StiffMatOO(const int C_NUM, const int d, const double nu,
 }
 
 int _Poisson_countStiffMatData(const int d, const int M, const int N, const int NE,
-        const int *B, const int *P, const int *ep)
+        const int *B, const int *ep)
 {
     int COUNT=0;
     int D = (d+1)*(d+2)/2;
@@ -82,19 +77,11 @@ int _Poisson_countStiffMatData(const int d, const int M, const int N, const int 
     int esize[] = {M,D}; int estride[] = {D,1};
     TensorAccessor<const int,2> e(ep,esize,estride);
 #pragma omp parallel for schedule(static) reduction(+:COUNT)
-    for (int i=0; i<N+NE; ++i)
-    {
-        if (B[i]==3)
-            COUNT += d*2;
-        else if (B[i]>0)
-            COUNT += d;
-    }
-#pragma omp parallel for schedule(static) reduction(+:COUNT)
     for (int k=0; k<M; ++k)
         for (int j0=0; j0<D; ++j0)
             if (B[e[k][j0]]>0) 
                 continue;
             else 
-                COUNT += d*D;
+                COUNT += D;
     return COUNT;
 }

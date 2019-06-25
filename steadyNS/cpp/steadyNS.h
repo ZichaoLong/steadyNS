@@ -16,41 +16,33 @@ extern "C" {
 #endif
 
 
-int _reduceP(const int N, int *P);
-int _mergePeriodNodes(const int d, const int M,
-        const int *B, const int *P, int *ep);
 int _switchEdgeNode(const int L, int *Edge);
 int _updateEdgeTags(const int d, const int N, const int NE, const int *Edge, 
         const int *B, const double *coord, int *Bedge);
 int _countStiffMatData(const int d, const int M, const int N, const int NE,
-        const int *B, const int *P, const int *ep);
+        const int *B, const int *ep);
 int _StiffMatOO(const int C_NUM, const int d, const double nu, 
         const int M, const int N, const int NE, 
-        const int *B, const int *P, const int *ep, 
+        const int *B, const int *ep, 
         const double *Ep, const double *eMeasure, 
         const int nQuad1, const double *W1, const double *Lambda1p, 
         const int nQuad2, const double *W2, const double *Lambda2p, 
         int *I, int *J, double *data);
 int _Poisson_countStiffMatData(const int d, const int M, const int N, const int NE,
-        const int *B, const int *P, const int *ep);
+        const int *B, const int *ep);
 int _Poisson_StiffMatOO(const int C_NUM, const int d, const double nu,
         const int M, const int N, const int NE, 
-        const int *B, const int *P, const int *ep, 
+        const int *B, const int *ep, 
         const double *Ep, const double *eMeasure, 
         const int nQuad2, const double *W2, const double *Lambda2p, 
         int *I, int *J, double *data);
 
-int _StiffMatOO_Boundary(const int d, const int N, const int NE, 
-        const int *B, const int *P, 
-        int &idx, int *I, int *J, double *data);
 int UpdateStiffMatTheta1Sum(const int d, const int D, const TensorAccessor<const double,2> &Ek,
         const int nQuad1, const double *W1, const TensorAccessor<const double,2> &Lambda1,
         TensorAccessor<double,2> &Theta1Sum);
 int UpdateStiffMatTheta2Sum(const int d, const int D, const TensorAccessor<const double,2> &Ek, 
         const int nQuad2, const double *W2, const TensorAccessor<const double,2> &Lambda2, 
         TensorAccessor<double,2> &Theta2Sum);
-int _RHI_Boundary_v(const int d, const int M, const int N, const int NE, 
-        const int *B, double *rhi);
 int CalculateTheta(const int d, const TensorAccessor<const double,2> &Ek,
         const int nQuad, const TensorAccessor<const double,2> &Lambda,
         TensorAccessor<double,3> &Theta);

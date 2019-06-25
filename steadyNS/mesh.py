@@ -1,12 +1,12 @@
 import gmsh
 import math
 import numpy as np
-from .mesh_extension import reduceP,mergePeriodicNodes,switchEdgeNode,updateEdgeTags
+from .mesh_extension import switchEdgeNode,updateEdgeTags
 
 model = gmsh.model
 factory = model.geo
 
-def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary, PhysicalFixWall):
+def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalFixWall, PhysicalHoleBoundary):
     # all nodes
     nodeTags,coord = model.mesh.getNodesForPhysicalGroup(dim=d,tag=PhysicalWholeDomain)
     nodeTags -= 1
@@ -25,19 +25,18 @@ def P1Nodes(d, PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleB
     B[InletNodeTags] = 1
     B[OutletNodeTags] = 2
 
-    # noslip wall boundary nodes
-    NoslipWallNodeTags,_ = model.mesh.getNodesForPhysicalGroup(dim=d-1,tag=PhysicalHoleBoundary)
-    NoslipWallNodeTags -= 1
-    B[NoslipWallNodeTags] = 4
-
     # Fix wall nodes
-    P = np.zeros(N,dtype=np.int32)-1
     FixWallNodeTags,_ = model.mesh.getNodesForPhysicalGroup(dim=d-1,tag=PhysicalFixWall)
     FixWallNodeTags -= 1
     B[FixWallNodeTags] = 3
-    return N,coord,B,P
 
-def P1Elements(d, WholeDomainTag, coord, B, P):
+    # Hole boundary nodes
+    NoslipWallNodeTags,_ = model.mesh.getNodesForPhysicalGroup(dim=d-1,tag=PhysicalHoleBoundary)
+    NoslipWallNodeTags -= 1
+    B[NoslipWallNodeTags] = 4
+    return N,coord,B
+
+def P1Elements(d, WholeDomainTag, coord, B):
     _, _, e = model.mesh.getElements(dim=d, tag=WholeDomainTag)
     e = e[0]
     e = np.ascontiguousarray(e.reshape(-1,d+1))-1
@@ -74,23 +73,12 @@ def P2Elements(d, B, e, coord):
     e = np.concatenate((e,elem2edge),axis=1)
     return NE,B,e
 
-def P1Check(coord,B,P,e,Cylinders,maxx=16):
+def P1Check(coord,B,e,Cylinders,maxx=16):
     M = e.shape[0]
     d = e.shape[1]-1
-    N = P.size
-    assert(np.all(P[e.reshape(-1)]==-1))
+    N = B.shape[0]
     print("node number:",N, "element number:",M)
-    print("B==3:", np.argwhere(B==3).reshape(-1))
-    print("P!=-1:",np.argwhere(P!=-1).reshape(-1))
-    print("B==-1:", np.argwhere(B==-1).reshape(-1))
-    print("P[P!=-1]:",P[P!=-1])
-    print("period nodes number",sum(B==3))
-    print("coord")
-    print(coord[B==3].transpose())
-    print("period non-boundary source nodes number",sum(B==-1))
-    print("coord")
-    print(coord[B==-1].transpose())
-    # check inlet,outlet,noslipwall nodes
+    # check inlet, outlet, fix wall, hole boundary nodes
     print(np.all(np.abs(coord[B==1,0])<1e-10))
     print(np.all(np.abs(coord[B==2,0]-maxx)<1e-10))
     BC = np.ndarray(N,dtype=bool)

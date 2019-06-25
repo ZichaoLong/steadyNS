@@ -15,8 +15,8 @@ nu = 0.1
 d = 2;
 maxx = 20;
 maxy = 8;
-lcar1 = 0.8;
-lcar2 = 0.3;
+lcar1 = 0.3;
+lcar2 = 0.1;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
 else:
@@ -135,18 +135,52 @@ PhysicalInlet = PhysicalInlet
 PhysicalOutlet = PhysicalOutlet
 PhysicalHoleBoundary = PhysicalCylinderBoundary
 #%% set coordinates and node boundaries
-N,coord,B,P = steadyNS.mesh.P1Nodes(d, 
-        PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalHoleBoundary, PhysicalFixWall)
+N,coord,B = steadyNS.mesh.P1Nodes(d, 
+        PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalFixWall, 
+        PhysicalHoleBoundary)
 
 #%% set elements
-M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B, P)
+M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B)
 
-steadyNS.mesh.P1Check(coord,B,P,e,Cylinders,maxx=16)
+steadyNS.mesh.P1Check(coord,B,e,Cylinders,maxx)
 
 NE,B,e = steadyNS.mesh.P2Elements(d, B, e, coord)
 assert(B.shape[0]==NE+N)
 print("edge number: ", NE)
 print("e.shape: ", e.shape)
+
+#%% set global stiff matrix for poisson equation
+C_NUM = steadyNS.poisson.Poisson_countStiffMatData(d,M,N,NE,B,e)
+print("non-zero number of C_OO=",C_NUM)
+C = steadyNS.poisson.Poisson_StiffMat(C_NUM,d,nu,M,N,NE,B,e,E,eMeasure)
+print("C shape=",C.shape)
+print("C nnz=",C.nnz)
+U = np.zeros((d,N+NE))
+U[0,B==4] = 1
+RHIAdd = np.zeros_like(U)
+for l in range(d):
+    RHIAdd[l] = C@U[l]
+RHIAdd = np.ascontiguousarray(RHIAdd[:,B==0])
+C = C[B==0]
+C = C[:,B==0]
+C_sparse = C
+if C.shape[0]<2000:
+    print("condition number of C=",np.linalg.cond(C.todense()))
+    C = C.todense()
+    values,vectors = np.linalg.eig(C)
+
+#%% test poisson solver
+import pyamg
+from pyamg.aggregation import smoothed_aggregation_solver
+ml = smoothed_aggregation_solver(C_sparse, symmetry='hermitian',strength='symmetric')
+M = ml.aspreconditioner(cycle='V')
+b = -RHIAdd[0]
+k = 0;
+def callback(xk):
+    global k
+    k += 1
+    return print("iter: ", k, "ResNorm: ", np.linalg.norm(C_sparse@xk-b))
+U,info = sp.sparse.linalg.cg(C_sparse,b,tol=1e-10,M=M,callback=callback)
 
 #%% set global stiff matrix
 C_NUM = steadyNS.steadyNS.countStiffMatData(d,M,N,NE,B,P,e)
@@ -231,27 +265,6 @@ with open('example/b', 'wb') as bio:
     np.ascontiguousarray(rhi).tofile(bio)
 with open('example/x', 'wb') as xio:
     np.ascontiguousarray(sp.sparse.linalg.spsolve(C_sparse,rhi)).tofile(xio)
-
-#%% set global stiff matrix for poisson equation
-C_NUM = steadyNS.poisson.Poisson_countStiffMatData(d,M,N,NE,B,P,e)
-print("non-zero number of C_OO=",C_NUM)
-C = steadyNS.poisson.Poisson_StiffMat(C_NUM,d,nu,M,N,NE,B,P,e,E,eMeasure)
-print("C shape=",C.shape)
-print("C nnz=",C.nnz)
-if C.shape[0]<2000:
-    print("condition number of C=",np.linalg.cond(C.todense()))
-    C = C.todense()
-    values,vectors = np.linalg.eig(C)
-    vectors = np.array(vectors)
-    index = np.ndarray(C.shape[0],dtype=np.bool)
-    index[:] = True
-    for i in range(N):
-        if (B[i]==1 or B[i]==2 or B[i]==4):
-            for l in range(d):
-                index[d*i+l] = False
-    print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
-    values2,vectors2 = np.linalg.eig(C[::2,::2])
-    print(np.linalg.norm(np.repeat(np.sort(values2),2)-np.sort(values)))
 
 #%%
 if len(sys.argv)<=1:
