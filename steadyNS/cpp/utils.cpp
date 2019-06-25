@@ -36,15 +36,11 @@ int _RHI_Boundary_v(const int d, const int M, const int N, const int NE,
 #pragma omp parallel for schedule(static)
     for (int i=0; i<N+NE; ++i)
     {
-        if (B[i]>3) // nodes on cylinders/holes
+        if (B[i]>0)
             for (int l=0; l<d; ++l)
-                rhi[d*i+l] = 0;
-        else if (B[i]>0) // inlet and outlet and fix walls
-        {
-            rhi[d*i] = 1;
-            for (int l=1; l<d; ++l)
-                rhi[d*i+l] = 0;
-        }
+                rhi[d*i+l] =0;
+        if (B[i]>3)
+            rhi[d*i] = -1;
     }
     return 0;
 }

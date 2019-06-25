@@ -9,13 +9,13 @@ import scipy as sp
 import scipy.sparse.linalg
 import sys
 import steadyNS
-from zlong_pltutils import *
+import matplotlib.pyplot as plt
 
-nu = 1
+nu = 0.1
 d = 2;
 maxx = 20;
-maxy = 4;
-lcar1 = 0.3;
+maxy = 8;
+lcar1 = 0.8;
 lcar2 = 0.3;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
@@ -42,8 +42,8 @@ model.add("cylinder")
 # if no external configure is available, x=4,y=2,d=1 is used by default
 Cylinders = []
 if len(argv)<3:
-    Cylinders.append(dict(x=4,y=2,d=1))
-    Cylinders.append(dict(x=7,y=2,d=1))
+    Cylinders.append(dict(x=5,y=4,d=1))
+    Cylinders.append(dict(x=8,y=4,d=1))
 else:
     k = 0
     while len(argv)-k>=3:
@@ -171,17 +171,66 @@ UP = np.zeros(d*(N+NE)+M)
 steadyNS.steadyNS.setUP(UP,B,d,M,N,NE)
 
 #%%
-rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
-UP = sp.sparse.linalg.spsolve(C_sparse,rhi)
-print(UP)
-pltnewaxis3d().plot_trisurf(coord[:,0],coord[:,1],UP[:d*N:d],cmap='jet')
-pltnewaxis3d().plot_trisurf(coord[:,0],coord[:,1],UP[1:d*N:d],cmap='jet')
+fig = plt.figure(figsize=(maxx//2,maxy//2))
+ax = fig.add_subplot(111)
+ax.quiver(coord[:,0],coord[:,1],UP[:d*N:d]+1,UP[1:d*N:d],width=0.001)
 
 #%%
-for i in range(10):
+import pyamg
+solver = pyamg.solver(C_sparse,config=pyamg.solver_configuration(C_sparse,verb=False))
+for i in range(20):
     rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
+    UP = pyamg.solve(C_sparse, rhi, tol=1e-8)
+    print(UP)
+    print(np.linalg.norm(C_sparse@UP-rhi))
+
+import pyamg
+from pyamg.aggregation import smoothed_aggregation_solver
+ml = smoothed_aggregation_solver(C_sparse)
+MM = ml.aspreconditioner(cycle='V')
+rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
+def callback(r):
+    print(np.linalg.norm(r))
+UPtmp,info = sp.sparse.linalg.gmres(C_sparse,rhi,M=MM,callback=callback,maxiter=100)
+
+cdiag = sp.sparse.diags(np.ones(C_sparse.shape[0])*1e-2)
+splusolver = sp.sparse.linalg.spilu(C_sparse+cdiag)
+def splusolve(x):
+    return splusolver.solve(x)
+MM = sp.sparse.linalg.LinearOperator(C_sparse.shape, splusolve)
+for i in range(20):
+    rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
+    UP = sp.sparse.linalg.gmres(C_sparse,rhi,M=MM)
+    print(UP)
+    print(np.linalg.norm(C_sparse@UP-rhi))
+
+splusolver = sp.sparse.linalg.splu(C_sparse)
+for i in range(20):
+    rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
+    UP = splusolver.solve(rhi)
+    print(UP)
+    print(np.linalg.norm(C_sparse@UP-rhi))
+
+for i in range(20):
+    rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
+    # UP = sp.sparse.linalg.spsolve(C_sparse,rhi,permc_spec='NATURAL')
     UP = sp.sparse.linalg.spsolve(C_sparse,rhi)
     print(UP)
+    print(np.linalg.norm(C_sparse@UP-rhi))
+
+with open('example/config', 'w') as configio:
+    print(C_sparse.shape[0], file=configio)
+    print(C_sparse.nnz, file=configio)
+with open('example/data', 'wb') as Cdata:
+    np.ascontiguousarray(C_sparse.data).tofile(Cdata)
+with open('example/indices', 'wb') as Cindices:
+    np.ascontiguousarray(C_sparse.indices).tofile(Cindices)
+with open('example/indptr', 'wb') as Cindptr:
+    np.ascontiguousarray(C_sparse.indptr).tofile(Cindptr)
+with open('example/b', 'wb') as bio:
+    np.ascontiguousarray(rhi).tofile(bio)
+with open('example/x', 'wb') as xio:
+    np.ascontiguousarray(sp.sparse.linalg.spsolve(C_sparse,rhi)).tofile(xio)
 
 #%% set global stiff matrix for poisson equation
 C_NUM = steadyNS.poisson.Poisson_countStiffMatData(d,M,N,NE,B,P,e)

@@ -14,24 +14,24 @@ PY_LDFLAGS=$(shell python -c \
 
 all:steadyNS.so mesh_extension.so poisson.so
 steadyNS.so:steadyNS.o libsteadyNS.a
-	g++ steadyNS.o cpp/libsteadyNS.a -o steadyNS.so -fopenmp -shared $(PY_LIBS)
+	+g++ steadyNS.o cpp/libsteadyNS.a -o steadyNS.so -fopenmp -shared $(PY_LIBS)
 mesh_extension.so:mesh_extension.o libmesh_extension.a
-	g++ mesh_extension.o cpp/libmesh_extension.a -o mesh_extension.so -fopenmp -shared $(PY_LIBS)
+	+g++ mesh_extension.o cpp/libmesh_extension.a -o mesh_extension.so -fopenmp -shared $(PY_LIBS)
 poisson.so:poisson.o libpoisson.a
-	g++ poisson.o cpp/libpoisson.a -o poisson.so -fopenmp -shared $(PY_LIBS)
+	+g++ poisson.o cpp/libpoisson.a -o poisson.so -fopenmp -shared $(PY_LIBS)
 
 steadyNS.cpp:steadyNS.pyx steadyNS.pxd
-	cython steadyNS.pyx --cplus -3
+	+cython steadyNS.pyx --cplus -3
 steadyNS.o:steadyNS.cpp
-	g++ -c steadyNS.cpp $(CPPFLAGS) -I $(PY_INCLUDEDIR)
+	+g++ -c steadyNS.cpp $(CPPFLAGS) -I $(PY_INCLUDEDIR)
 mesh_extension.cpp:mesh_extension.pyx mesh_extension.pxd
-	cython mesh_extension.pyx --cplus -3
+	+cython mesh_extension.pyx --cplus -3
 mesh_extension.o:mesh_extension.cpp
-	g++ -c mesh_extension.cpp $(CPPFLAGS) -I $(PY_INCLUDEDIR)
+	+g++ -c mesh_extension.cpp $(CPPFLAGS) -I $(PY_INCLUDEDIR)
 poisson.cpp:poisson.pyx poisson.pxd
-	cython poisson.pyx --cplus -3
+	+cython poisson.pyx --cplus -3
 poisson.o:poisson.cpp
-	g++ -c poisson.cpp $(CPPFLAGS) -I $(PY_INCLUDEDIR)
+	+g++ -c poisson.cpp $(CPPFLAGS) -I $(PY_INCLUDEDIR)
 
 libsteadyNS.a:
 	+make libsteadyNS.a -C $(CPP_DIR)
