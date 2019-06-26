@@ -15,7 +15,7 @@ using std::cout; using std::endl; using std::ends;
 int _RHI(const int d, const int M, const int N, const int NE, 
         const int *B, const int *ep, const double *Ep, const double *eMeasure, 
         const int nQuad5, const double *W5, const double *Lambda5p, 
-        const double *UPp, double *rhi)
+        const double *Up, double *rhi)
 {
     int D = (d+1)*(d+2)/2;
     // convert pointer to TensorAccessor
@@ -27,7 +27,7 @@ int _RHI(const int d, const int M, const int N, const int NE,
     TensorAccessor<const double,2> Lambda5(Lambda5p,Lambda5size,Lambda5stride);
 
 #pragma omp parallel for schedule(static)
-    for (int i=0; i<d*(N+NE)+M; ++i)
+    for (int i=0; i<d*(N+NE); ++i)
         rhi[i] = 0; // initialize all elements as 0
 
     // coefficients derived from test function in $e_k$
@@ -35,9 +35,10 @@ int _RHI(const int d, const int M, const int N, const int NE,
     {
         Tensor<double,2> UeTensor({D,d});
         TensorAccessor<double,2> Ue = UeTensor.accessor();
+        const int *ek = e[k].data();
         for (int j=0; j<D; ++j) // update Ue
             for (int l=0; l<d; ++l)
-                Ue[j][l] = UPp[d*e[k][j]+l];
+                Ue[j][l] = Up[l*(N+NE)+ek[j]];
 
         Tensor<double,2> Gamma5Tensor({nQuad5,D});
         TensorAccessor<double,2> Gamma5 = Gamma5Tensor.accessor();
@@ -64,13 +65,13 @@ int _RHI(const int d, const int M, const int N, const int NE,
         CalculateTrGU(d, nQuad5, GU5.ConstAccessor(), TrGU5);
 
         int row = -1;
-        // stiffness matrix for $v^{j0,l}$, row=d*e[k][j0]+l
+        // stiffness matrix for $v^{j0}$, row=d*ek[j0]+l
         for (int j0=0; j0<D; ++j0)
         {
-            if (B[e[k][j0]]>0) continue; // boundary equations have been set done
+            if (B[ek[j0]]>0) continue; // boundary equations have been set done
             for (int l=0; l<d; ++l)
             {
-                row = d*e[k][j0]+l;
+                row = l*(N+NE)+ek[j0];
                 for (int i=0; i<nQuad5; ++i)
                     rhi[row] -= eMeasure[k]*W5[i]*Gamma5[i][j0]*
                         (UGU5[i][l]+0.5*TrGU5[i]*U5[i][l]);

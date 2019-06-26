@@ -16,7 +16,7 @@ d = 2;
 maxx = 20;
 maxy = 8;
 lcar1 = 0.3;
-lcar2 = 0.1;
+lcar2 = 0.3;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
 else:
@@ -155,12 +155,11 @@ print("non-zero number of C_OO=",C_NUM)
 C = steadyNS.poisson.Poisson_StiffMat(C_NUM,d,nu,M,N,NE,B,e,E,eMeasure)
 print("C shape=",C.shape)
 print("C nnz=",C.nnz)
-U = np.zeros((d,N+NE))
-U[0,B==4] = 1
-RHIAdd = np.zeros_like(U)
+U = steadyNS.poisson.ReturnU(d,N,NE,B)
+URHIAdd = np.zeros_like(U)
 for l in range(d):
-    RHIAdd[l] = C@U[l]
-RHIAdd = np.ascontiguousarray(RHIAdd[:,B==0])
+    URHIAdd[l] = -C@U[l]
+URHIAdd = np.ascontiguousarray(URHIAdd[:,B==0])
 C = C[B==0]
 C = C[:,B==0]
 C_sparse = C
@@ -173,36 +172,24 @@ if C.shape[0]<2000:
 import pyamg
 from pyamg.aggregation import smoothed_aggregation_solver
 ml = smoothed_aggregation_solver(C_sparse, symmetry='hermitian',strength='symmetric')
-M = ml.aspreconditioner(cycle='V')
-b = -RHIAdd[0]
+MM = ml.aspreconditioner(cycle='V')
+b = URHIAdd[0]
 k = 0;
 def callback(xk):
     global k
     k += 1
     return print("iter: ", k, "ResNorm: ", np.linalg.norm(C_sparse@xk-b))
-U,info = sp.sparse.linalg.cg(C_sparse,b,tol=1e-10,M=M,callback=callback)
+U,info = sp.sparse.linalg.cg(C_sparse,b,tol=1e-10,M=MM,callback=callback)
 
 #%% set global stiff matrix
-C_NUM = steadyNS.steadyNS.countStiffMatData(d,M,N,NE,B,P,e)
-print("non-zero number of C_OO=",C_NUM)
-C = steadyNS.steadyNS.StiffMat(C_NUM,d,nu,M,N,NE,B,P,e,E,eMeasure)
-C_sparse = C
-print("C shape=",C.shape)
-print("C nnz=",C.nnz)
-if C.shape[0]<2000:
-    print("condition number of C=",np.linalg.cond(C.todense()))
-    C = C.todense()
-    values,vectors = np.linalg.eig(C)
-    vectors = np.array(vectors)
-    index = np.ndarray(C.shape[0],dtype=np.bool)
-    index[:] = True
-    for i in range(N):
-        if (B[i]==1 or B[i]==2 or B[i]==4):
-            for l in range(d):
-                index[d*i+l] = False
-    print("condition number of reduceC=",np.linalg.cond(C[index][:,index]))
-UP = np.zeros(d*(N+NE)+M)
-steadyNS.steadyNS.setUP(UP,B,d,M,N,NE)
+C0 = steadyNS.steadyNS.StiffMat(d,M,N,NE,B,e,E,eMeasure)
+for l in range(d):
+    print("C0[",l,"] shape=",C0[l].shape)
+    print("C0[",l,"] nnz=",C0[l].nnz)
+U = steadyNS.poisson.ReturnU(d,N,NE,B)
+PRHIAdd = np.zeros(M)
+for l in range(d):
+    PRHIAdd -= C0[l]@U[l]
 
 #%%
 fig = plt.figure(figsize=(maxx//2,maxy//2))
