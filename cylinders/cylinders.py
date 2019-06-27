@@ -8,6 +8,7 @@ import numpy as np
 import scipy as sp
 import scipy.sparse.linalg
 import sys
+import time
 import steadyNS
 import matplotlib.pyplot as plt
 
@@ -15,8 +16,8 @@ nu = 0.1
 d = 2;
 maxx = 20;
 maxy = 8;
-lcar1 = 0.3;
-lcar2 = 0.3;
+lcar1 = 0.8;
+lcar2 = 0.4;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
 else:
@@ -148,6 +149,8 @@ NE,B,e = steadyNS.mesh.P2Elements(d, B, e, coord)
 assert(B.shape[0]==NE+N)
 print("edge number: ", NE)
 print("e.shape: ", e.shape)
+DN = (B==0).sum()
+print("number of free nodes/edges for velocity: ", DN)
 
 #%% set global stiff matrix for poisson equation
 C_NUM = steadyNS.poisson.Poisson_countStiffMatData(d,M,N,NE,B,e)
@@ -158,28 +161,27 @@ print("C nnz=",C.nnz)
 U = steadyNS.poisson.ReturnU(d,N,NE,B)
 URHIAdd = np.zeros_like(U)
 for l in range(d):
-    URHIAdd[l] = -C@U[l]
+    URHIAdd[l] = C@U[l]
 URHIAdd = np.ascontiguousarray(URHIAdd[:,B==0])
 C = C[B==0]
 C = C[:,B==0]
-C_sparse = C
 if C.shape[0]<2000:
     print("condition number of C=",np.linalg.cond(C.todense()))
-    C = C.todense()
-    values,vectors = np.linalg.eig(C)
+    Ctmp = C.todense()
+    values,vectors = np.linalg.eig(Ctmp)
 
 #%% test poisson solver
 import pyamg
 from pyamg.aggregation import smoothed_aggregation_solver
-ml = smoothed_aggregation_solver(C_sparse, symmetry='hermitian',strength='symmetric')
+ml = smoothed_aggregation_solver(C, symmetry='hermitian',strength='symmetric')
 MM = ml.aspreconditioner(cycle='V')
-b = URHIAdd[0]
+b = -URHIAdd[0]
 k = 0;
 def callback(xk):
     global k
     k += 1
-    return print("iter: ", k, "ResNorm: ", np.linalg.norm(C_sparse@xk-b))
-U,info = sp.sparse.linalg.cg(C_sparse,b,tol=1e-10,M=MM,callback=callback)
+    return print("iter: ", k, "ResNorm: ", np.linalg.norm(C@xk-b))
+U,info = sp.sparse.linalg.cg(C,b,tol=1e-10,M=MM,callback=callback)
 
 #%% set global stiff matrix
 C0 = steadyNS.steadyNS.StiffMat(d,M,N,NE,B,e,E,eMeasure)
@@ -187,71 +189,83 @@ for l in range(d):
     print("C0[",l,"] shape=",C0[l].shape)
     print("C0[",l,"] nnz=",C0[l].nnz)
 U = steadyNS.poisson.ReturnU(d,N,NE,B)
-PRHIAdd = np.zeros(M)
+PRHIAdd = np.zeros(M-1)
 for l in range(d):
-    PRHIAdd -= C0[l]@U[l]
+    PRHIAdd -= C0[l][:-1]@U[l]
+for l in range(d):
+    C0[l] = C0[l][:-1,B==0]
+
+#%% method 1: solve Schur complement
+k = 0
+def STOKESITE(U0):
+    global k
+    Urhi = steadyNS.steadyNS.RHI(U0,d,M,N,NE,B,e,E,eMeasure)
+    Urhi -= URHIAdd
+    Prhi = np.zeros(M-1)
+    def solveC(x):
+        tmp,info = sp.sparse.linalg.cg(C,x,tol=1e-12,M=MM)
+        return tmp
+    for l in range(d):
+        Prhi += C0[l]@solveC(Urhi[l])
+    def BABop(x):
+        y = np.zeros_like(x)
+        for l in range(d):
+            y += C0[l]@(solveC(C0[l].transpose()@x))
+        return y
+    BAB = sp.sparse.linalg.LinearOperator((M-1,M-1), matvec=BABop, rmatvec=BABop)
+    k = 0
+    def callback(xk):
+        global k
+        k += 1
+    P,info = sp.sparse.linalg.minres(BAB, Prhi, tol=1e-12, maxiter=10, callback=callback)
+    print("IterNum for solving pressure: ", k, " Precision: ", np.linalg.norm(BAB@P-Prhi))
+    U = np.zeros_like(U0)
+    for l in range(d):
+        U[l] = solveC(Urhi[l]-C0[l].transpose()@P)
+    return U
+U0 = np.zeros((d,DN))
+startt = time.time()
+for i in range(20):
+    U1 = STOKESITE(U0)
+    print("Stokes Iter Convergence: ", np.linalg.norm(U0-U1))
+    U0 = U1
+print("elapsed time: ", time.time()-startt)
+U = steadyNS.poisson.EmbedU(d,N,NE,B,U0)
+
+#%% method 2: solve stokes equation directly
+BigC = sp.sparse.bmat([[C,None],[None,C]])
+BigC0 = sp.sparse.bmat([[C0[0],C0[1]],])
+BigStokes = sp.sparse.bmat([[BigC,BigC0.transpose().tocsr()],[BigC0,None]],format='csr')
+BigStokesml = smoothed_aggregation_solver(BigStokes, symmetry='hermitian',strength='symmetric')
+BigStokesMM = BigStokesml.aspreconditioner(cycle='V')
+def STOKESITE(UP0):
+    global k
+    U0 = UP0[:d*DN].reshape(d,DN)
+    UPrhi = np.zeros_like(UP0)
+    UPrhi[:d*DN] = steadyNS.steadyNS.RHI(U0,d,M,N,NE,B,e,E,eMeasure).reshape(-1)
+    UPrhi[:d*DN] -= URHIAdd.reshape(-1)
+    k = 0
+    def callback(xk):
+        global k
+        k += 1
+    UP,info  = sp.sparse.linalg.minres(BigStokes,UPrhi,tol=1e-12,callback=callback)
+    print("IterNum for solving BigStokes: ", k)
+    print("Solver Precision: ", np.linalg.norm(BigStokes@UP-UPrhi))
+    return UP
+UP0 = np.zeros(d*DN+M-1)
+startt = time.time()
+for i in range(20):
+    UP1 = STOKESITE(UP0)
+    print("Stokes Iter Convergence: ", np.linalg.norm(UP0-UP1))
+    UP0 = UP1
+print("elapsed time: ", time.time()-startt)
+U = UP0[:d*DN].reshape(d,DN)
+U = steadyNS.poisson.EmbedU(d,N,NE,B,U)
 
 #%%
 fig = plt.figure(figsize=(maxx//2,maxy//2))
 ax = fig.add_subplot(111)
-ax.quiver(coord[:,0],coord[:,1],UP[:d*N:d]+1,UP[1:d*N:d],width=0.001)
-
-#%%
-import pyamg
-solver = pyamg.solver(C_sparse,config=pyamg.solver_configuration(C_sparse,verb=False))
-for i in range(20):
-    rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
-    UP = pyamg.solve(C_sparse, rhi, tol=1e-8)
-    print(UP)
-    print(np.linalg.norm(C_sparse@UP-rhi))
-
-import pyamg
-from pyamg.aggregation import smoothed_aggregation_solver
-ml = smoothed_aggregation_solver(C_sparse)
-MM = ml.aspreconditioner(cycle='V')
-rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
-def callback(r):
-    print(np.linalg.norm(r))
-UPtmp,info = sp.sparse.linalg.gmres(C_sparse,rhi,M=MM,callback=callback,maxiter=100)
-
-cdiag = sp.sparse.diags(np.ones(C_sparse.shape[0])*1e-2)
-splusolver = sp.sparse.linalg.spilu(C_sparse+cdiag)
-def splusolve(x):
-    return splusolver.solve(x)
-MM = sp.sparse.linalg.LinearOperator(C_sparse.shape, splusolve)
-for i in range(20):
-    rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
-    UP = sp.sparse.linalg.gmres(C_sparse,rhi,M=MM)
-    print(UP)
-    print(np.linalg.norm(C_sparse@UP-rhi))
-
-splusolver = sp.sparse.linalg.splu(C_sparse)
-for i in range(20):
-    rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
-    UP = splusolver.solve(rhi)
-    print(UP)
-    print(np.linalg.norm(C_sparse@UP-rhi))
-
-for i in range(20):
-    rhi = steadyNS.steadyNS.RHI(UP,d,M,N,NE,B,e,E,eMeasure)
-    # UP = sp.sparse.linalg.spsolve(C_sparse,rhi,permc_spec='NATURAL')
-    UP = sp.sparse.linalg.spsolve(C_sparse,rhi)
-    print(UP)
-    print(np.linalg.norm(C_sparse@UP-rhi))
-
-with open('example/config', 'w') as configio:
-    print(C_sparse.shape[0], file=configio)
-    print(C_sparse.nnz, file=configio)
-with open('example/data', 'wb') as Cdata:
-    np.ascontiguousarray(C_sparse.data).tofile(Cdata)
-with open('example/indices', 'wb') as Cindices:
-    np.ascontiguousarray(C_sparse.indices).tofile(Cindices)
-with open('example/indptr', 'wb') as Cindptr:
-    np.ascontiguousarray(C_sparse.indptr).tofile(Cindptr)
-with open('example/b', 'wb') as bio:
-    np.ascontiguousarray(rhi).tofile(bio)
-with open('example/x', 'wb') as xio:
-    np.ascontiguousarray(sp.sparse.linalg.spsolve(C_sparse,rhi)).tofile(xio)
+ax.quiver(coord[:,0],coord[:,1],U[0,:N]+1,U[1,:N],width=0.001)
 
 #%%
 if len(sys.argv)<=1:

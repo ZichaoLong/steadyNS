@@ -65,7 +65,7 @@ int _RHI(const int d, const int M, const int N, const int NE,
         CalculateTrGU(d, nQuad5, GU5.ConstAccessor(), TrGU5);
 
         int row = -1;
-        // stiffness matrix for $v^{j0}$, row=d*ek[j0]+l
+        // stiffness matrix for $v^{j0}$, row=l*(N+NE)+ek[j0]
         for (int j0=0; j0<D; ++j0)
         {
             if (B[ek[j0]]>0) continue; // boundary equations have been set done

@@ -48,3 +48,9 @@ def ReturnU(d,N,NE,B):
     U[0,B==4] = 1
     return U
 
+def EmbedU(d,N,NE,B,U0):
+    U = np.zeros((d,N+NE))
+    U[0,B==4] = -1
+    for l in range(d):
+        U[l,B==0] = U0[l]
+    return U
