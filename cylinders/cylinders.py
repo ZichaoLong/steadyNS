@@ -266,6 +266,16 @@ U = steadyNS.poisson.EmbedU(d,N,NE,B,U)
 fig = plt.figure(figsize=(maxx//2,maxy//2))
 ax = fig.add_subplot(111)
 ax.quiver(coord[:,0],coord[:,1],U[0,:N]+1,U[1,:N],width=0.001)
+fig = plt.figure(figsize=(maxx//2,maxy//2))
+ax = fig.add_subplot(111)
+ax.tricontour(coord[:,0],coord[:,1],U[0,:N]+1,levels=14,linewidths=0.5,colors='k')
+cntr = ax.tricontourf(coord[:,0],coord[:,1],U[0,:N]+1,levels=14,cmap="RdBu_r")
+fig.colorbar(cntr,ax=ax)
+fig = plt.figure(figsize=(maxx//2,maxy//2))
+ax = fig.add_subplot(111)
+ax.tricontour(coord[:,0],coord[:,1],U[1,:N],levels=14,linewidths=0.5, colors='k')
+cntr = ax.tricontourf(coord[:,0],coord[:,1],U[1,:N],levels=14,cmap="RdBu_r")
+fig.colorbar(cntr,ax=ax)
 
 #%%
 if len(sys.argv)<=1:
