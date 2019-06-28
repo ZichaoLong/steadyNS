@@ -43,14 +43,14 @@ def Poisson_StiffMat(C_NUM,d,nu,M,N,NE,B,e,E,eMeasure):
     C = C.tocsr()
     return C
 
-def ReturnU(d,N,NE,B):
-    U = np.zeros((d,N+NE))
-    U[0,B==4] = 1
+def ReturnU(N,NE,B):
+    U = np.zeros(N+NE)
+    U[B==4] = -1
     return U
 
-def EmbedU(d,N,NE,B,U0):
-    U = np.zeros((d,N+NE))
-    U[0,B==4] = -1
-    for l in range(d):
-        U[l,B==0] = U0[l]
+def EmbedU(N,NE,B,U0):
+    U = np.zeros(N+NE)
+    U[B==4] = -1
+    U[B==0] = U0
     return U
+

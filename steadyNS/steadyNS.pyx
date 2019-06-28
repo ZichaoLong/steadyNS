@@ -40,6 +40,18 @@ def StiffMat(d,M,N,NE,B,e,E,eMeasure):
         C[l] = C[l].tocsr()
     return C
 
+def ReturnU(d,N,NE,B):
+    U = np.zeros((d,N+NE))
+    U[0,B==4] = -1
+    return U
+
+def EmbedU(d,N,NE,B,U0):
+    U = np.zeros((d,N+NE))
+    U[0,B==4] = -1
+    for l in range(d):
+        U[l,B==0] = U0[l]
+    return U
+
 def RHI(U0,d,M,N,NE,B,e,E,eMeasure):
     B = np.ascontiguousarray(B)
     e = np.ascontiguousarray(e)
@@ -52,7 +64,7 @@ def RHI(U0,d,M,N,NE,B,e,E,eMeasure):
     W5,Lambda5 = QuadPts.quadpts(d,5)
     cdef double[::1] W5_memview = W5
     cdef double[::1] Lambda5_memview = Lambda5.reshape(-1)
-    U = poisson.EmbedU(d,N,NE,B,U0)
+    U = EmbedU(d,N,NE,B,U0)
     cdef double[::1] U_memview = U.reshape(-1)
     rhi = np.empty_like(U)
     cdef double[::1] rhi_memview = rhi.reshape(-1)

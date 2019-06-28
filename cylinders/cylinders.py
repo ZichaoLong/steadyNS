@@ -16,8 +16,8 @@ nu = 0.1
 d = 2;
 maxx = 20;
 maxy = 8;
-lcar1 = 0.8;
-lcar2 = 0.4;
+lcar1 = 0.3;
+lcar2 = 0.06;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
 else:
@@ -43,8 +43,8 @@ model.add("cylinder")
 # if no external configure is available, x=4,y=2,d=1 is used by default
 Cylinders = []
 if len(argv)<3:
-    Cylinders.append(dict(x=5,y=4,d=1))
-    Cylinders.append(dict(x=8,y=4,d=1))
+    Cylinders.append(dict(x=5.5,y=3.5,d=1))
+    Cylinders.append(dict(x=6.5,y=4.5,d=1))
 else:
     k = 0
     while len(argv)-k>=3:
@@ -139,6 +139,7 @@ PhysicalHoleBoundary = PhysicalCylinderBoundary
 N,coord,B = steadyNS.mesh.P1Nodes(d, 
         PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalFixWall, 
         PhysicalHoleBoundary)
+# B[B==PhysicalOutletNodes] = 0
 
 #%% set elements
 M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B)
@@ -156,13 +157,9 @@ print("number of free nodes/edges for velocity: ", DN)
 C_NUM = steadyNS.poisson.Poisson_countStiffMatData(d,M,N,NE,B,e)
 print("non-zero number of C_OO=",C_NUM)
 C = steadyNS.poisson.Poisson_StiffMat(C_NUM,d,nu,M,N,NE,B,e,E,eMeasure)
+C_full = C
 print("C shape=",C.shape)
 print("C nnz=",C.nnz)
-U = steadyNS.poisson.ReturnU(d,N,NE,B)
-URHIAdd = np.zeros_like(U)
-for l in range(d):
-    URHIAdd[l] = C@U[l]
-URHIAdd = np.ascontiguousarray(URHIAdd[:,B==0])
 C = C[B==0]
 C = C[:,B==0]
 if C.shape[0]<2000:
@@ -175,20 +172,35 @@ import pyamg
 from pyamg.aggregation import smoothed_aggregation_solver
 ml = smoothed_aggregation_solver(C, symmetry='hermitian',strength='symmetric')
 MM = ml.aspreconditioner(cycle='V')
-b = -URHIAdd[0]
-k = 0;
+U = steadyNS.poisson.ReturnU(N,NE,B)
+URHIAdd_poisson = C_full@U
+URHIAdd_poisson = np.ascontiguousarray(URHIAdd_poisson[B==0])
+b = 0.001-URHIAdd_poisson
+k = 0
 def callback(xk):
     global k
     k += 1
     return print("iter: ", k, "ResNorm: ", np.linalg.norm(C@xk-b))
 U,info = sp.sparse.linalg.cg(C,b,tol=1e-10,M=MM,callback=callback)
+U = steadyNS.poisson.EmbedU(N,NE,B,U)
+
+#%% show poisson solution
+fig = plt.figure(figsize=(maxx//2+2,maxy//2))
+ax = fig.add_subplot(111)
+ax.tricontour(coord[:,0],coord[:,1],U[:N],levels=30,linewidths=0.5,colors='k')
+cntr = ax.tricontourf(coord[:,0],coord[:,1],U[:N],levels=30,cmap="RdBu_r")
+fig.colorbar(cntr,ax=ax)
 
 #%% set global stiff matrix
 C0 = steadyNS.steadyNS.StiffMat(d,M,N,NE,B,e,E,eMeasure)
 for l in range(d):
     print("C0[",l,"] shape=",C0[l].shape)
     print("C0[",l,"] nnz=",C0[l].nnz)
-U = steadyNS.poisson.ReturnU(d,N,NE,B)
+U = steadyNS.steadyNS.ReturnU(d,N,NE,B)
+URHIAdd = np.zeros_like(U)
+for l in range(d):
+    URHIAdd[l] = C_full@U[l]
+URHIAdd = np.ascontiguousarray(URHIAdd[:,B==0])
 PRHIAdd = np.zeros(M-1)
 for l in range(d):
     PRHIAdd -= C0[l][:-1]@U[l]
@@ -197,14 +209,15 @@ for l in range(d):
 
 #%% method 1: solve Schur complement
 k = 0
+solveC = sp.sparse.linalg.splu(C).solve
 def STOKESITE(U0):
     global k
     Urhi = steadyNS.steadyNS.RHI(U0,d,M,N,NE,B,e,E,eMeasure)
     Urhi -= URHIAdd
     Prhi = np.zeros(M-1)
-    def solveC(x):
-        tmp,info = sp.sparse.linalg.cg(C,x,tol=1e-12,M=MM)
-        return tmp
+    # def solveC(x):
+    #     tmp,info = sp.sparse.linalg.cg(C,x,tol=1e-12,M=MM)
+    #     return tmp
     for l in range(d):
         Prhi += C0[l]@solveC(Urhi[l])
     def BABop(x):
@@ -217,20 +230,20 @@ def STOKESITE(U0):
     def callback(xk):
         global k
         k += 1
-    P,info = sp.sparse.linalg.minres(BAB, Prhi, tol=1e-12, maxiter=10, callback=callback)
+    P,info = sp.sparse.linalg.minres(BAB, Prhi, tol=1e-7, maxiter=200, callback=callback)
     print("IterNum for solving pressure: ", k, " Precision: ", np.linalg.norm(BAB@P-Prhi))
     U = np.zeros_like(U0)
     for l in range(d):
         U[l] = solveC(Urhi[l]-C0[l].transpose()@P)
-    return U
+    return U,P
 U0 = np.zeros((d,DN))
 startt = time.time()
 for i in range(20):
-    U1 = STOKESITE(U0)
+    U1,P1 = STOKESITE(U0)
     print("Stokes Iter Convergence: ", np.linalg.norm(U0-U1))
     U0 = U1
 print("elapsed time: ", time.time()-startt)
-U = steadyNS.poisson.EmbedU(d,N,NE,B,U0)
+U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U0)
 
 #%% method 2: solve stokes equation directly
 BigC = sp.sparse.bmat([[C,None],[None,C]])
@@ -238,18 +251,20 @@ BigC0 = sp.sparse.bmat([[C0[0],C0[1]],])
 BigStokes = sp.sparse.bmat([[BigC,BigC0.transpose().tocsr()],[BigC0,None]],format='csr')
 BigStokesml = smoothed_aggregation_solver(BigStokes, symmetry='hermitian',strength='symmetric')
 BigStokesMM = BigStokesml.aspreconditioner(cycle='V')
+solveBigStokes = sp.sparse.linalg.splu(BigStokes).solve
 def STOKESITE(UP0):
     global k
     U0 = UP0[:d*DN].reshape(d,DN)
     UPrhi = np.zeros_like(UP0)
     UPrhi[:d*DN] = steadyNS.steadyNS.RHI(U0,d,M,N,NE,B,e,E,eMeasure).reshape(-1)
     UPrhi[:d*DN] -= URHIAdd.reshape(-1)
-    k = 0
-    def callback(xk):
-        global k
-        k += 1
-    UP,info  = sp.sparse.linalg.minres(BigStokes,UPrhi,tol=1e-12,callback=callback)
-    print("IterNum for solving BigStokes: ", k)
+    # k = 0
+    # def callback(xk):
+    #     global k
+    #     k += 1
+    # UP,info = sp.sparse.linalg.minres(BigStokes,UPrhi,tol=1e-12,callback=callback)
+    # print("IterNum for solving BigStokes: ", k)
+    UP = solveBigStokes(UPrhi)
     print("Solver Precision: ", np.linalg.norm(BigStokes@UP-UPrhi))
     return UP
 UP0 = np.zeros(d*DN+M-1)
@@ -260,22 +275,31 @@ for i in range(20):
     UP0 = UP1
 print("elapsed time: ", time.time()-startt)
 U = UP0[:d*DN].reshape(d,DN)
-U = steadyNS.poisson.EmbedU(d,N,NE,B,U)
+U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U)
 
 #%%
 fig = plt.figure(figsize=(maxx//2,maxy//2))
 ax = fig.add_subplot(111)
 ax.quiver(coord[:,0],coord[:,1],U[0,:N]+1,U[1,:N],width=0.001)
-fig = plt.figure(figsize=(maxx//2,maxy//2))
+fig = plt.figure(figsize=(maxx//2+2,maxy//2))
 ax = fig.add_subplot(111)
-ax.tricontour(coord[:,0],coord[:,1],U[0,:N]+1,levels=14,linewidths=0.5,colors='k')
-cntr = ax.tricontourf(coord[:,0],coord[:,1],U[0,:N]+1,levels=14,cmap="RdBu_r")
+ax.tricontour(coord[:,0],coord[:,1],U[0,:N]+1,levels=30,linewidths=0.5,colors='k')
+cntr = ax.tricontourf(coord[:,0],coord[:,1],U[0,:N]+1,levels=30,cmap="RdBu_r")
 fig.colorbar(cntr,ax=ax)
-fig = plt.figure(figsize=(maxx//2,maxy//2))
+fig = plt.figure(figsize=(maxx//2+2,maxy//2))
 ax = fig.add_subplot(111)
-ax.tricontour(coord[:,0],coord[:,1],U[1,:N],levels=14,linewidths=0.5, colors='k')
-cntr = ax.tricontourf(coord[:,0],coord[:,1],U[1,:N],levels=14,cmap="RdBu_r")
+ax.tricontour(coord[:,0],coord[:,1],U[1,:N],levels=30,linewidths=0.5, colors='k')
+cntr = ax.tricontourf(coord[:,0],coord[:,1],U[1,:N],levels=30,cmap="RdBu_r")
 fig.colorbar(cntr,ax=ax)
+fig = plt.figure(figsize=(maxx//2+2,maxy//2))
+ax = fig.add_subplot(111)
+ax.tricontour(coord[:,0],coord[:,1],np.sqrt((U[0,:N]+1)**2+U[1,:N]**2),levels=30,linewidths=0.5, colors='k')
+cntr = ax.tricontourf(coord[:,0],coord[:,1],np.sqrt((U[0,:N]+1)**2+U[1,:N]**2),levels=30,cmap="RdBu_r")
+fig.colorbar(cntr,ax=ax)
+ax.plot(coord[B[:N]==1,0],coord[B[:N]==1,1],'ko', ms=5)
+ax.plot(coord[B[:N]==2,0],coord[B[:N]==2,1],'k>', ms=5)
+ax.plot(coord[B[:N]==3,0],coord[B[:N]==3,1],'kx', ms=5)
+ax.plot(coord[B[:N]==4,0],coord[B[:N]==4,1],'kD', ms=3)
 
 #%%
 if len(sys.argv)<=1:
