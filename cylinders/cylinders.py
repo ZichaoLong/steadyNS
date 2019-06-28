@@ -140,7 +140,7 @@ PhysicalHoleBoundary = PhysicalCylinderBoundary
 N,coord,B = steadyNS.mesh.P1Nodes(d, 
         PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalFixWall, 
         PhysicalHoleBoundary)
-# B[B==PhysicalOutletNodes] = 0
+B[B==PhysicalOutletNodes] = 0
 
 #%% set elements
 M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B)
