@@ -42,7 +42,7 @@ int _StiffMatOO(const int d, const int M, const int N, const int NE,
             {
                 I[idx] = k;
                 J[idx] = ek[j];
-                data[idx] = -eMeasure[k]*Theta1Sum[j][l];
+                data[idx] = eMeasure[k]*Theta1Sum[j][l];
                 ++idx;
             }
     }

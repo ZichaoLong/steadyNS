@@ -43,6 +43,7 @@ model.add("cylinder")
 # if no external configure is available, x=4,y=2,d=1 is used by default
 Cylinders = []
 if len(argv)<3:
+    # Cylinders.append(dict(x=6,y=4,d=1))
     Cylinders.append(dict(x=5.5,y=3.5,d=1))
     Cylinders.append(dict(x=6.5,y=4.5,d=1))
 else:
@@ -146,7 +147,13 @@ M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B)
 
 steadyNS.mesh.P1Check(coord,B,e,Cylinders,maxx)
 
-NE,B,e = steadyNS.mesh.P2Elements(d, B, e, coord)
+NE,B,e,Edge = steadyNS.mesh.P2Elements(d, B, e, coord)
+coordEdge = (coord[Edge[:,0]]+coord[Edge[:,1]])/2
+coordAll = np.concatenate([coord,coordEdge],axis=0)
+coordEle = np.zeros((M,2))
+for l in range(d+1):
+    coordEle += coord[e[:,l]]
+coordEle /= d+1
 assert(B.shape[0]==NE+N)
 print("edge number: ", NE)
 print("e.shape: ", e.shape)
@@ -187,8 +194,8 @@ U = steadyNS.poisson.EmbedU(N,NE,B,U)
 #%% show poisson solution
 fig = plt.figure(figsize=(maxx//2+2,maxy//2))
 ax = fig.add_subplot(111)
-ax.tricontour(coord[:,0],coord[:,1],U[:N],levels=30,linewidths=0.5,colors='k')
-cntr = ax.tricontourf(coord[:,0],coord[:,1],U[:N],levels=30,cmap="RdBu_r")
+ax.tricontour(coordAll[:,0],coordAll[:,1],U,levels=30,linewidths=0.5,colors='k')
+cntr = ax.tricontourf(coordAll[:,0],coordAll[:,1],U,levels=30,cmap="RdBu_r")
 fig.colorbar(cntr,ax=ax)
 
 #%% set global stiff matrix
@@ -230,12 +237,12 @@ def STOKESITE(U0):
     def callback(xk):
         global k
         k += 1
-    P,info = sp.sparse.linalg.minres(BAB, Prhi, tol=1e-7, maxiter=200, callback=callback)
-    print("IterNum for solving pressure: ", k, " Precision: ", np.linalg.norm(BAB@P-Prhi))
+    Ptmp,info = sp.sparse.linalg.minres(BAB, Prhi, tol=1e-12, maxiter=200, callback=callback)
+    print("IterNum for solving pressure: ", k, " Precision: ", np.linalg.norm(BAB@Ptmp-Prhi))
     U = np.zeros_like(U0)
     for l in range(d):
-        U[l] = solveC(Urhi[l]-C0[l].transpose()@P)
-    return U,P
+        U[l] = solveC(Urhi[l]-C0[l].transpose()@Ptmp)
+    return U,Ptmp
 U0 = np.zeros((d,DN))
 startt = time.time()
 for i in range(20):
@@ -244,6 +251,7 @@ for i in range(20):
     U0 = U1
 print("elapsed time: ", time.time()-startt)
 U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U0)
+P = np.concatenate([P1,np.zeros(1)])
 
 #%% method 2: solve stokes equation directly
 BigC = sp.sparse.bmat([[C,None],[None,C]])
@@ -276,30 +284,49 @@ for i in range(20):
 print("elapsed time: ", time.time()-startt)
 U = UP0[:d*DN].reshape(d,DN)
 U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U)
+P = np.concatenate([UP0[d*DN:],np.zeros(1)])
 
 #%%
+# quiver
 fig = plt.figure(figsize=(maxx//2,maxy//2))
 ax = fig.add_subplot(111)
-ax.quiver(coord[:,0],coord[:,1],U[0,:N]+1,U[1,:N],width=0.001)
+ax.quiver(coordAll[:,0],coordAll[:,1],U[0]+1,U[1],width=0.001)
+# velocity x
 fig = plt.figure(figsize=(maxx//2+2,maxy//2))
 ax = fig.add_subplot(111)
-ax.tricontour(coord[:,0],coord[:,1],U[0,:N]+1,levels=30,linewidths=0.5,colors='k')
-cntr = ax.tricontourf(coord[:,0],coord[:,1],U[0,:N]+1,levels=30,cmap="RdBu_r")
+ax.tricontour(coordAll[:,0],coordAll[:,1],U[0]+1,levels=30,linewidths=0.5,colors='k')
+cntr = ax.tricontourf(coordAll[:,0],coordAll[:,1],U[0]+1,levels=30,cmap="RdBu_r")
 fig.colorbar(cntr,ax=ax)
+# velocity y
 fig = plt.figure(figsize=(maxx//2+2,maxy//2))
 ax = fig.add_subplot(111)
-ax.tricontour(coord[:,0],coord[:,1],U[1,:N],levels=30,linewidths=0.5, colors='k')
-cntr = ax.tricontourf(coord[:,0],coord[:,1],U[1,:N],levels=30,cmap="RdBu_r")
+ax.tricontour(coordAll[:,0],coordAll[:,1],U[1],levels=30,linewidths=0.5, colors='k')
+cntr = ax.tricontourf(coordAll[:,0],coordAll[:,1],U[1],levels=30,cmap="RdBu_r")
 fig.colorbar(cntr,ax=ax)
+# velocity norm
 fig = plt.figure(figsize=(maxx//2+2,maxy//2))
 ax = fig.add_subplot(111)
-ax.tricontour(coord[:,0],coord[:,1],np.sqrt((U[0,:N]+1)**2+U[1,:N]**2),levels=30,linewidths=0.5, colors='k')
-cntr = ax.tricontourf(coord[:,0],coord[:,1],np.sqrt((U[0,:N]+1)**2+U[1,:N]**2),levels=30,cmap="RdBu_r")
+ax.tricontour(coordAll[:,0],coordAll[:,1],np.sqrt((U[0]+1)**2+U[1]**2),levels=30,linewidths=0.5, colors='k')
+cntr = ax.tricontourf(coordAll[:,0],coordAll[:,1],np.sqrt((U[0]+1)**2+U[1]**2),levels=30,cmap="RdBu_r")
 fig.colorbar(cntr,ax=ax)
-ax.plot(coord[B[:N]==1,0],coord[B[:N]==1,1],'ko', ms=5)
-ax.plot(coord[B[:N]==2,0],coord[B[:N]==2,1],'k>', ms=5)
-ax.plot(coord[B[:N]==3,0],coord[B[:N]==3,1],'kx', ms=5)
-ax.plot(coord[B[:N]==4,0],coord[B[:N]==4,1],'kD', ms=3)
+ax.plot(coordAll[B==1,0],coordAll[B==1,1],'ko', ms=5)
+ax.plot(coordAll[B==2,0],coordAll[B==2,1],'k>', ms=5)
+ax.plot(coordAll[B==3,0],coordAll[B==3,1],'kx', ms=5)
+ax.plot(coordAll[B==4,0],coordAll[B==4,1],'kD', ms=2)
+# pressure
+fig = plt.figure(figsize=(10,8))
+ax = fig.add_subplot(111)
+PSelect = np.ndarray(M,dtype=bool)
+PSelect[:] = False
+# PSelect = np.abs(P)<0.25
+for cylinder in Cylinders:
+    tmp = np.sqrt((coordEle[:,0]-cylinder['x'])**2+(coordEle[:,1]-cylinder['y'])**2)
+    tmp = np.abs(tmp-cylinder['d']/2)
+    tmp = tmp<1
+    PSelect = PSelect | tmp
+ax.tricontour(coordEle[PSelect,0],coordEle[PSelect,1],P[PSelect],levels=14,linewidths=0.5,colors='k')
+cntr = ax.tricontourf(coordEle[PSelect,0],coordEle[PSelect,1],P[PSelect],levels=14,cmap="RdBu_r")
+fig.colorbar(cntr,ax=ax)
 
 #%%
 if len(sys.argv)<=1:

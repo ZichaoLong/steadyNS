@@ -71,7 +71,7 @@ def P2Elements(d, B, e, coord):
     B = np.concatenate((B,Bedge),axis=0)
     elem2edge = unique_inverse.reshape(EdgeNumPerElem, M).transpose()+N
     e = np.concatenate((e,elem2edge),axis=1)
-    return NE,B,e
+    return NE,B,e,Edge
 
 def P1Check(coord,B,e,Cylinders,maxx=16):
     M = e.shape[0]
