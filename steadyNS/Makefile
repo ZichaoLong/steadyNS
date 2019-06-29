@@ -1,6 +1,6 @@
 CPP_DIR=cpp
 CPP_INCLUDEDIR=$(CPP_DIR)
-CPPFLAGS=-I $(CPP_INCLUDEDIR) -fopenmp -fPIC -Wall -O3
+CPPFLAGS=-std=c++11 -I $(CPP_INCLUDEDIR) -fopenmp -fPIC -Wall -O3
 
 PY_INCLUDEDIR=$(shell python -c \
 			  "from distutils import sysconfig; \
