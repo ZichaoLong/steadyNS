@@ -9,8 +9,8 @@ $(OBJS):%.o:%.cpp
 	g++ -c $(CPPFLAGS) $< -o $@
 libmesh_extension.a:mesh_extension.o
 	ar cr libmesh_extension.a mesh_extension.o 
-libsteadyNS.a:ns-stiffmat.o ns-rhi.o utils.o
-	ar cr libsteadyNS.a ns-stiffmat.o ns-rhi.o utils.o
+libsteadyNS.a:ns-stiffmat.o ns-ugu.o utils.o
+	ar cr libsteadyNS.a ns-stiffmat.o ns-ugu.o utils.o
 libpoisson.a:poisson.o utils.o
 	ar cr libpoisson.a poisson.o utils.o
 

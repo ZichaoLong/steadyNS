@@ -4,7 +4,7 @@
 cdef extern from "steadyNS.h":
     int _Poisson_countStiffMatData(const int d, const int M, const int N, const int NE,
             const int *B, const int *ep);
-    int _Poisson_StiffMatOO(const int C_NUM, const int d, const double nu,
+    int _Poisson_StiffMatOO(const int C_NUM, const int d,
             const int M, const int N, const int NE, 
             const int *B, const int *ep, 
             const double *Ep, const double *eMeasure, 

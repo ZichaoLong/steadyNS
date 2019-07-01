@@ -1,5 +1,5 @@
 /*************************************************************************
-  > File Name: ns-rhi.cpp
+  > File Name: ns-ugu.cpp
   > Author: Long Zichao
   > Mail: zlong@pku.edu.cn
   > Created Time: 2019-06-12
@@ -12,10 +12,14 @@
 #include "ASTen/Tensor.h"
 using std::cout; using std::endl; using std::ends;
 
-int _RHI(const int d, const int M, const int N, const int NE, 
+int _UGU(const int C_NUM_UplusGU, const int C_NUM_UGUplus, 
+        const int d, const int M, const int N, const int NE, 
         const int *B, const int *ep, const double *Ep, const double *eMeasure, 
         const int nQuad5, const double *W5, const double *Lambda5p, 
-        const double *Up, double *rhi)
+        const double *Up, 
+        double *ugu, 
+        int *IUplusGU, int *JUplusGU, double *dataUplusGU, 
+        int *IUGUplus, int *JUGUplus, double *dataUGUplus)
 {
     int D = (d+1)*(d+2)/2;
     // convert pointer to TensorAccessor
@@ -26,9 +30,10 @@ int _RHI(const int d, const int M, const int N, const int NE,
     int Lambda5size[] = {nQuad5,d+1}; int Lambda5stride[] = {d+1,1};
     TensorAccessor<const double,2> Lambda5(Lambda5p,Lambda5size,Lambda5stride);
 
-#pragma omp parallel for schedule(static)
     for (int i=0; i<d*(N+NE); ++i)
-        rhi[i] = 0; // initialize all elements as 0
+        ugu[i] = 0; // initialize all elements as 0
+
+    int idxUGUplus = 0, idxUplusGU = 0;
 
     // coefficients derived from test function in $e_k$
     for (int k=0; k<M; ++k)
@@ -60,23 +65,58 @@ int _RHI(const int d, const int M, const int N, const int NE,
         TensorAccessor<double,2> UGU5 = UGU5Tensor.accessor();
         CalculateUGU(d, nQuad5, U5.ConstAccessor(), GU5.ConstAccessor(), UGU5);
 
-        Tensor<double,1> TrGU5Tensor({nQuad5});
-        TensorAccessor<double,1> TrGU5 = TrGU5Tensor.accessor();
-        CalculateTrGU(d, nQuad5, GU5.ConstAccessor(), TrGU5);
+        // Tensor<double,1> TrGU5Tensor({nQuad5});
+        // TensorAccessor<double,1> TrGU5 = TrGU5Tensor.accessor();
+        // CalculateTrGU(d, nQuad5, GU5.ConstAccessor(), TrGU5);
+
+        Tensor<double,2> UG5Tensor({nQuad5,D});
+        TensorAccessor<double,2> UG5 = UG5Tensor.accessor();
+        for (int i=0; i<nQuad5; ++i)
+            for (int j=0; j<D; ++j)
+            {
+                UG5[i][j] = 0;
+                for (int l=0; l<d; ++l)
+                    UG5[i][j] += U5[i][l]*Theta5[i][j][l];
+            }
 
         int row = -1;
-        // stiffness matrix for $v^{j0}$, row=l*(N+NE)+ek[j0]
+        
         for (int j0=0; j0<D; ++j0)
         {
             if (B[ek[j0]]>0) continue; // boundary equations have been set done
-            for (int l=0; l<d; ++l)
+            for (int l=0; l<d; ++l) // $v^{j0,l}$, row=l*(N+NE)+ek[j0]
             {
                 row = l*(N+NE)+ek[j0];
-                for (int i=0; i<nQuad5; ++i)
-                    rhi[row] -= eMeasure[k]*W5[i]*Gamma5[i][j0]*
-                        (UGU5[i][l]+0.5*TrGU5[i]*U5[i][l]);
+                for (int i=0; i<nQuad5; ++i) // right hand items
+                    ugu[row] += eMeasure[k]*W5[i]*Gamma5[i][j0]*UGU5[i][l];
+                for (int j1=0; j1<D; ++j1) // UplusGU
+                    for (int l1=0; l1<d; ++l1)
+                    {
+                        ++idxUplusGU;
+                        IUplusGU[idxUplusGU] = row;
+                        JUplusGU[idxUplusGU] = l1*(N+NE)+ek[j1];
+                        dataUplusGU[idxUplusGU] = 0;
+                        for (int i=0; i<nQuad5; ++i)
+                            dataUplusGU[idxUplusGU] += eMeasure[k]*W5[i]*
+                                Gamma5[i][j0]*Gamma5[i][j1]*GU5[i][l][l1];
+                    }
+                for (int j2=0; j2<D; ++j2) // UGUplus
+                {
+                    ++idxUGUplus;
+                    IUGUplus[idxUGUplus] = row;
+                    JUGUplus[idxUGUplus] = l*(N+NE)+ek[j2];
+                    dataUGUplus[idxUGUplus] = 0;
+                    for (int i=0; i<nQuad5; ++i)
+                        dataUGUplus[idxUGUplus] += eMeasure[k]*W5[i]*
+                            Gamma5[i][j0]*UG5[i][j2];
+                }
             }
         }
+    }
+    if (idxUGUplus!=C_NUM_UGUplus || idxUplusGU!=C_NUM_UplusGU)
+    {
+        cout << "error with C_NUM_UGUplus or C_NUM_UplusGU" << endl;
+        exit(0);
     }
     return 0;
 }

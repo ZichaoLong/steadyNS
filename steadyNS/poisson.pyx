@@ -14,7 +14,7 @@ def Poisson_countStiffMatData(d,M,N,NE,B,e):
     return _Poisson_countStiffMatData(d, M, N, NE, 
             &B_memview[0], &e_memview[0])
 
-def Poisson_StiffMat(C_NUM,d,nu,M,N,NE,B,e,E,eMeasure):
+def Poisson_StiffMat(C_NUM,d,M,N,NE,B,e,E,eMeasure):
     I = np.empty(C_NUM,dtype=np.int32)
     J = np.empty(C_NUM,dtype=np.int32)
     data = np.empty(C_NUM,dtype=float)
@@ -32,7 +32,7 @@ def Poisson_StiffMat(C_NUM,d,nu,M,N,NE,B,e,E,eMeasure):
     W2,Lambda2 = QuadPts.quadpts(d,2)
     cdef double[::1] W2_memview = W2
     cdef double[::1] Lambda2_memview = Lambda2.reshape(-1)
-    idx = _Poisson_StiffMatOO(C_NUM, d, nu, M, N, NE,
+    idx = _Poisson_StiffMatOO(C_NUM, d, M, N, NE,
             &B_memview[0], &e_memview[0],
             &E_memview[0], &eMeasure_memview[0],
             W2.size, &W2_memview[0], &Lambda2_memview[0], 

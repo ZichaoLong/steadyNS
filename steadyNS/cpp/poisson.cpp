@@ -12,7 +12,7 @@
 #include "ASTen/Tensor.h"
 using std::cout; using std::endl; using std::ends;
 
-int _Poisson_StiffMatOO(const int C_NUM, const int d, const double nu,
+int _Poisson_StiffMatOO(const int C_NUM, const int d,
         const int M, const int N, const int NE, 
         const int *B, const int *ep, 
         const double *Ep, const double *eMeasure, 
@@ -48,7 +48,7 @@ int _Poisson_StiffMatOO(const int C_NUM, const int d, const double nu,
             {
                 I[idx] = row;
                 J[idx] = ek[j1];
-                data[idx] = nu*eMeasure[k]*Theta2Sum[j0][j1];
+                data[idx] = eMeasure[k]*Theta2Sum[j0][j1];
                 ++idx;
             }
         }

@@ -42,10 +42,36 @@ int _StiffMatOO(const int d, const int M, const int N, const int NE,
             {
                 I[idx] = k;
                 J[idx] = ek[j];
-                data[idx] = eMeasure[k]*Theta1Sum[j][l];
+                data[idx] = -eMeasure[k]*Theta1Sum[j][l];
                 ++idx;
             }
     }
     return idx;
 }
 
+int _countStiffMatUplusGU(const int d, const int M, const int N, const int NE, 
+        const int *B, const int *ep)
+{
+    int D=(d+1)*(d+2)/2;
+    int esize[] = {M,D}; int estride[] = {D,1};
+    TensorAccessor<const int,2> e(ep,esize,estride);
+    int C_NUM_UplusGU=0;
+    for (int k=0; k<M; ++k)
+        for (int j0=0; j0<D; ++j0)
+            if (B[e[k][j0]]>0) continue;
+            else C_NUM_UplusGU += D*d;
+    return C_NUM_UplusGU;
+}
+int _countStiffMatUGUplus(const int d, const int M, const int N, const int NE, 
+        const int *B, const int *ep)
+{
+    int D=(d+1)*(d+2)/2;
+    int esize[] = {M,D}; int estride[] = {D,1};
+    TensorAccessor<const int,2> e(ep,esize,estride);
+    int C_NUM_UGUplus=0;
+    for (int k=0; k<M; ++k)
+        for (int j0=0; j0<D; ++j0)
+            if (B[e[k][j0]]>0) continue;
+            else C_NUM_UGUplus += D;
+    return C_NUM_UGUplus;
+}
