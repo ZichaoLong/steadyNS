@@ -56,7 +56,7 @@ Similarly, for $l=0,\cdots,d-1,j=0,\cdots,(d+1)(d+2)/2$ we obtain
   \end{split}
 \end{equation}
 
-\subsubsection{Stiffness Matrxi}
+\subsubsection{Stiffness Matrix}
 \paragraph{$\bm{\nu\int_{e_k}\nabla u_h^n(x):\nabla v^{j_0,l}(x)\ud x}$} 
 By using Eq.\eqref{eq:integral-gugv}, 
 for $l=0,\cdots,d-1,j=0,\cdots,(d+1)(d+2)/2$ we obtain
@@ -84,3 +84,69 @@ It is easy to see
   \end{split}
 \end{equation}
 
+\newpage
+\subsubsection{Stiffness Matrix and Right Hand Items}
+\[
+  \begin{split}
+        U_n[i,l] &= u^l(\Lambda_n[i])=\sum_j \Gamma_n[i,j]u[j,l], \\
+    GU_n[i,l,l'] &= \nabla_{l'} u^l(\Lambda_n[i])=\sum_j \Theta_n^e[i,j,l']u[j,l],
+    l'=0,\cdots,d-1
+  \end{split}
+\]
+\paragraph{$\bm{\nu\int_{e_k}\nabla u_h(x):\nabla v^{j_0,l}(x)\ud x}$} 
+\[
+    \nu\int_{e_k} \nabla u_h:\nabla v^{j_0,l}\ud x = \nu|e_k| \sum_{j_1} 
+    \sum_{i,l'}W_2[i]\Theta_2^{e_k}[i,j_0,l']\Theta_2^{e_k}[i,j_1,l'] 
+    \cdot U_k[j_1,l]
+\]
+\paragraph{$\bm{-\int_{e_k}p_h(x)\nabla\cdot v^{j_0,l}(x)\ud x}$}
+\[
+    -\int_{e_k} p_h^n\nabla\cdot v^{j_0,l}\ud x
+    = -|e_k| \beta_k\sum_i W_1[i] \Theta_1^{e_k}[i,j_0,l]
+\]
+\paragraph{$\bm{-\int_{\Omega}q_k(x)\nabla\cdot u_h(x)\ud x=0}$}
+\[
+    -\int_\Omega q_k(x)\nabla\cdot u_h\ud x =
+    = -|e_k| \sum_{j,l}\sum_i W_1[i] \Theta_1^{e_k}[i,j,l] \cdot U_k[j,l]
+\]
+
+
+\paragraph{$\bm{\int_{e_k}v^{j_0,l}(x)\cdot f(x)\ud x}$}
+\[
+  \int_{e_k}v^{j_0,l}\cdot f\ud x = |e_k|\cdot \sum_{j_1}VU_{4s}[j_0,j_1]F_k[j_1,l]
+\]
+
+\paragraph{$\bm{\int_{e_k}v^{j_0,l}(x)\cdot(u_h(x)\cdot\nabla)
+u_h^+(x)\ud x}$}
+\[
+  \begin{split}
+    \int_{e_k} v^{j_0,l}(x)\cdot(u_h(x)\cdot\nabla)u_h^+(x)\ud x
+    &= |e_k|\sum_iW_5[i]\cdot\Gamma_5[i,j_0]\cdot
+    \sum_{l1}U_5[i,l1]\cdot GU_5^+[i,l,l1] \\
+    &= |e_k|\sum_iW_5[i]\cdot\Gamma_5[i,j_0]\cdot
+    \sum_{l1} \sum_{j1}\Gamma_5[i,j1] u[j1,l1] \cdot \sum_{j2}\Theta_5^{e_k}[i,j2,l1]u^+[j2,l]
+  \end{split}
+\]
+
+\subsubsection{Iterative Methods}
+Stokes
+\[
+  \begin{split}
+    -\nu \Delta u^++\nabla p^++ (u\cdot\nabla)u &= f\\
+    \nabla\cdot u^+&=0
+  \end{split}
+\]
+Newton
+\[
+  \begin{split}
+    -\nu \Delta u^++\nabla p^++ (u^+\cdot\nabla)u+(u\cdot\nabla)u^+&= f+(u\cdot\nabla)u \\
+    \nabla\cdot u^+&=0
+  \end{split}
+\]
+Oseen
+\[
+  \begin{split}
+    -\nu \Delta u^++\nabla p^++ (u\cdot\nabla)u^+&= f \\
+    \nabla\cdot u^+&=0
+  \end{split}
+\]
