@@ -45,12 +45,13 @@ def Poisson_StiffMat(C_NUM,d,M,N,NE,B,e,E,eMeasure):
 
 def ReturnU(N,NE,B):
     U = np.zeros(N+NE)
-    U[B==4] = -1
+    U[B==1] = 1
+    U[B==2] = 1
+    U[B==3] = 1
     return U
 
 def EmbedU(N,NE,B,U0):
-    U = np.zeros(N+NE)
-    U[B==4] = -1
+    U = ReturnU(N,NE,B)
     U[B==0] = U0
     return U
 
