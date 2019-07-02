@@ -92,23 +92,23 @@ int _UGU(const int C_NUM_UplusGU, const int C_NUM_UGUplus,
                 for (int j1=0; j1<D; ++j1) // UplusGU
                     for (int l1=0; l1<d; ++l1)
                     {
-                        ++idxUplusGU;
                         IUplusGU[idxUplusGU] = row;
                         JUplusGU[idxUplusGU] = l1*(N+NE)+ek[j1];
                         dataUplusGU[idxUplusGU] = 0;
                         for (int i=0; i<nQuad5; ++i)
                             dataUplusGU[idxUplusGU] += eMeasure[k]*W5[i]*
                                 Gamma5[i][j0]*Gamma5[i][j1]*GU5[i][l][l1];
+                        ++idxUplusGU;
                     }
                 for (int j2=0; j2<D; ++j2) // UGUplus
                 {
-                    ++idxUGUplus;
                     IUGUplus[idxUGUplus] = row;
                     JUGUplus[idxUGUplus] = l*(N+NE)+ek[j2];
                     dataUGUplus[idxUGUplus] = 0;
                     for (int i=0; i<nQuad5; ++i)
                         dataUGUplus[idxUGUplus] += eMeasure[k]*W5[i]*
                             Gamma5[i][j0]*UG5[i][j2];
+                    ++idxUGUplus;
                 }
             }
         }

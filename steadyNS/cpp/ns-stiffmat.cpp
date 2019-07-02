@@ -59,7 +59,7 @@ int _countStiffMatUplusGU(const int d, const int M, const int N, const int NE,
     for (int k=0; k<M; ++k)
         for (int j0=0; j0<D; ++j0)
             if (B[e[k][j0]]>0) continue;
-            else C_NUM_UplusGU += D*d;
+            else C_NUM_UplusGU += d*D*d;
     return C_NUM_UplusGU;
 }
 int _countStiffMatUGUplus(const int d, const int M, const int N, const int NE, 
@@ -72,6 +72,6 @@ int _countStiffMatUGUplus(const int d, const int M, const int N, const int NE,
     for (int k=0; k<M; ++k)
         for (int j0=0; j0<D; ++j0)
             if (B[e[k][j0]]>0) continue;
-            else C_NUM_UGUplus += D;
+            else C_NUM_UGUplus += d*D;
     return C_NUM_UGUplus;
 }
