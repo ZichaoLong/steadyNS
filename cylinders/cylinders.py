@@ -16,8 +16,8 @@ nu = 2
 d = 2;
 maxx = 24;
 maxy = 8;
-lcar1 = 0.6;
-lcar2 = 0.3;
+lcar1 = 0.4;
+lcar2 = 0.2;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
 else:
@@ -140,7 +140,7 @@ PhysicalHoleBoundary = PhysicalCylinderBoundary
 N,coord,B = steadyNS.mesh.P1Nodes(d, 
         PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalFixWall, 
         PhysicalHoleBoundary)
-# B[B==PhysicalOutletNodes] = 0
+B[B==PhysicalOutletNodes] = 0
 
 #%% set elements
 M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B)
@@ -213,10 +213,10 @@ for l in range(d):
     PRHIAdd += C0[l]@U[l]
 C0_full = list(x for x in C0)
 for l in range(d):
-    C0[l] = C0[l][:-1,B==0]
+    C0[l] = C0[l][:,B==0]
 
 #%% solve stokes equation directly
-UP0 = np.zeros(d*DN+M-1)
+UP0 = np.zeros(d*DN+M)
 BigC = nu*sp.sparse.bmat([[C,None],[None,C]])
 BigC0 = sp.sparse.bmat([[C0[0],C0[1]],])
 BigStokes = sp.sparse.bmat([[BigC,BigC0.transpose().tocsr()],[BigC0,None]],format='csr')
@@ -232,28 +232,26 @@ def STOKESITE(UP0):
     UPrhi[:d*DN] = -ugu[:,B==0].reshape(-1)
     print(nu)
     UPrhi[:d*DN] -= nu*URHIAdd.reshape(-1)
-    UPrhi[d*DN:] -= PRHIAdd[:-1]
-    # k = 0
-    # def callback(xk):
-    #     global k
-    #     k += 1
-    # UP,info = sp.sparse.linalg.minres(BigStokes,UPrhi,tol=1e-12,callback=callback)
-    # print("IterNum for solving BigStokes: ", k)
+    UPrhi[d*DN:] -= PRHIAdd
     UP = solveBigStokes(UPrhi)
     print("Solver Precision: ", np.linalg.norm(BigStokes@UP-UPrhi))
     return UP
 startt = time.time()
-for i in range(20):
+for i in range(10):
     UP1 = STOKESITE(UP0)
     print("Stokes Iter Convergence: ", np.linalg.norm(UP0-UP1))
     UP0 = UP1
 print("elapsed time: ", time.time()-startt)
 U = UP0[:d*DN].reshape(d,DN)
 U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U)
-P = np.concatenate([UP0[d*DN:],np.zeros(1)])
+P = UP0[d*DN:]
+# P = np.concatenate([UP0[d*DN:],np.zeros(1)])
+del solveBigStokes
+del BigStokes
 
-#%% newton iteration
+#%% newton iteration: initial value is from stokes iteration
 # UP0 = np.zeros(d*DN+M-1)
+# nu = 0.1 # change viscosity here
 Bd = np.concatenate([B,]*d,axis=0)
 def NEWTONITE(UP0):
     global k
@@ -271,16 +269,10 @@ def NEWTONITE(UP0):
     UPrhi[:d*DN] -= UGUplus@tmp.reshape(-1)
     UplusGU = UplusGU[:,Bd==0]
     UGUplus = UGUplus[:,Bd==0]
-    UPrhi[d*DN:] -= PRHIAdd[:-1]
+    UPrhi[d*DN:] -= PRHIAdd
     BigC = nu*sp.sparse.bmat([[C,None],[None,C]])+UplusGU+UGUplus
     BigC0 = sp.sparse.bmat([[C0[0],C0[1]],])
     BigNewton = sp.sparse.bmat([[BigC,BigC0.transpose().tocsr()],[BigC0,None]],format='csr')
-    # k = 0
-    # def callback(xk):
-    #     global k
-    #     k += 1
-    # UP,info = sp.sparse.linalg.minres(BigNewton,UPrhi,tol=1e-12,callback=callback)
-    # print("IterNum for solving BigNewton: ", k)
     UP = sp.sparse.linalg.spsolve(BigNewton, UPrhi)
     print("Newton Precision: ", np.linalg.norm(BigNewton@UP-UPrhi))
     return UP
@@ -292,7 +284,8 @@ for i in range(5):
 print("elapsed time: ", time.time()-startt)
 U = UP0[:d*DN].reshape(d,DN)
 U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U)
-P = np.concatenate([UP0[d*DN:],np.zeros(1)])
+P = UP0[d*DN:]
+# P = np.concatenate([UP0[d*DN:],np.zeros(1)])
 
 #%%
 # quiver
