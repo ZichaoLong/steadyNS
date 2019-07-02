@@ -42,9 +42,7 @@ def StiffMat(d,M,N,NE,B,e,E,eMeasure):
 
 def ReturnU(d,N,NE,B):
     U = np.zeros((d,N+NE))
-    U[0,B==1] = 1
-    U[0,B==2] = 1
-    U[0,B==3] = 1
+    U[1,B==1] = 1
     return U
 
 def EmbedU(d,N,NE,B,U0):
