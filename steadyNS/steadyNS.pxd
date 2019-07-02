@@ -18,4 +18,8 @@ cdef extern from "steadyNS.h":
             double *ugu, 
             int *IUplusGU, int *JUplusGU, double *dataUplusGU, 
             int *IUGUplus, int *JUGUplus, double *dataUGUplus)
+    int _sourceF(const int d, const int M, const int N, const int NE, 
+            const int *B, const int *ep, const double *Ep, const double *eMeasure, 
+            const int nQuad4, const double *W4, const double *Lambda4p, 
+            const double *Fp, double *rhi)
 

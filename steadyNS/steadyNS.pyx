@@ -92,3 +92,23 @@ def UGU(U0,d,M,N,NE,B,e,E,eMeasure):
     UGUplus = UGUplus.tocsr()
     return ugu,UplusGU,UGUplus
 
+def sourceF(F,d,M,N,NE,B,e,E,eMeasure):
+    B = np.ascontiguousarray(B)
+    e = np.ascontiguousarray(e)
+    cdef int[::1] B_memview = B
+    cdef int[::1] e_memview = e.reshape(-1)
+    E = np.ascontiguousarray(E)
+    eMeasure = np.ascontiguousarray(eMeasure)
+    cdef double[::1] E_memview = E.reshape(-1)
+    cdef double[::1] eMeasure_memview = eMeasure
+    W4,Lambda4 = QuadPts.quadpts(d,4)
+    cdef double[::1] W4_memview = W4
+    cdef double[::1] Lambda4_memview = Lambda4.reshape(-1)
+    F = np.ascontiguousarray(F)
+    cdef double[::1] F_memview = F.reshape(-1)
+    rhi = np.zeros_like(F)
+    cdef double[::1] rhi_memview = rhi.reshape(-1)
+    _sourceF(d,M,N,NE,&B_memview[0],&e_memview[0],&E_memview[0],
+            &eMeasure_memview[0],W4.size,&W4_memview[0],&Lambda4_memview[0],
+            &F_memview[0],&rhi_memview[0])
+    return rhi
