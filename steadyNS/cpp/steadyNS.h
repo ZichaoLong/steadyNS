@@ -43,6 +43,10 @@ int _UGU(const int C_NUM_UplusGU, const int C_NUM_UGUplus,
         double *ugu, 
         int *IUplusGU, int *JUplusGU, double *dataUplusGU, 
         int *IUGUplus, int *JUGUplus, double *dataUGUplus);
+int _sourceF(const int d, const int M, const int N, const int NE, 
+        const int *B, const int *ep, const double *Ep, const double *eMeasure, 
+        const int nQuad4, const double *W4, const double *Lambda4p, 
+        const double *Fp, double *rhi);
 
 int UpdateStiffMatTheta1Sum(const int d, const int D, const TensorAccessor<const double,2> &Ek,
         const int nQuad1, const double *W1, const TensorAccessor<const double,2> &Lambda1,
