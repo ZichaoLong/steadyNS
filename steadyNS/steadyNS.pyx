@@ -53,7 +53,7 @@ def EmbedU(d,N,NE,B,U0):
         U[l,B==0] = U0[l]
     return U
 
-def UGU(U0,d,M,N,NE,B,e,E,eMeasure):
+def UGU(U0,d,M,N,NE,B,e,E,eMeasure,withUplusGU=True,withUGUplus=True):
     B = np.ascontiguousarray(B)
     e = np.ascontiguousarray(e)
     cdef int[::1] B_memview = B
@@ -86,8 +86,8 @@ def UGU(U0,d,M,N,NE,B,e,E,eMeasure):
     _UGU(C_NUM_UplusGU, C_NUM_UGUplus, d, M, N, NE, &B_memview[0], &e_memview[0], &E_memview[0], 
             &eMeasure_memview[0], W5.size, &W5_memview[0], &Lambda5_memview[0], 
             &U_memview[0], &ugu_memview[0], 
-            &IUplusGU_m[0], &JUplusGU_m[0], &dataUplusGU_m[0],
-            &IUGUplus_m[0], &JUGUplus_m[0], &dataUGUplus_m[0])
+            withUplusGU, &IUplusGU_m[0], &JUplusGU_m[0], &dataUplusGU_m[0],
+            withUGUplus, &IUGUplus_m[0], &JUGUplus_m[0], &dataUGUplus_m[0])
     UplusGU = sp.sparse.coo_matrix((dataUplusGU,(IUplusGU,JUplusGU)),shape=(d*(N+NE),d*(N+NE)))
     UGUplus = sp.sparse.coo_matrix((dataUGUplus,(IUGUplus,JUGUplus)),shape=(d*(N+NE),d*(N+NE)))
     UplusGU = UplusGU.tocsr()

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 nu = 0.1
 d = 3;
-maxx = 20;
+maxx = 24;
 maxy = 8;
 maxz = 8;
 lcar1 = 0.3;
@@ -192,7 +192,7 @@ print("number of free nodes/edges for velocity: ", DN)
 #%% set global stiff matrix for poisson equation
 C_NUM = steadyNS.poisson.Poisson_countStiffMatData(d,M,N,NE,B,e)
 print("non-zero number of C_OO=",C_NUM)
-C = steadyNS.poisson.Poisson_StiffMat(C_NUM,d,nu,M,N,NE,B,e,E,eMeasure)
+C = steadyNS.poisson.Poisson_StiffMat(C_NUM,d,M,N,NE,B,e,E,eMeasure)
 C_full = C
 print("C shape=",C.shape)
 print("C nnz=",C.nnz)
@@ -206,8 +206,8 @@ if C.shape[0]<2000:
 #%% test poisson solver
 import pyamg
 from pyamg.aggregation import smoothed_aggregation_solver
-ml = smoothed_aggregation_solver(C,symmetry='hermitian',strength='symmetric')
-MM = ml.aspreconditioner(cycle='V')
+PoissonML = smoothed_aggregation_solver(C,symmetry='hermitian',strength='symmetric')
+PoissonMM = PoissonML.aspreconditioner(cycle='V')
 U = steadyNS.poisson.ReturnU(N,NE,B)
 URHIAdd_poisson = C_full@U
 URHIAdd_poisson = np.ascontiguousarray(URHIAdd_poisson[B==0])
@@ -217,7 +217,7 @@ def callback(xk):
     global k
     k += 1
     return print("iter: ", k, "ResNorm: ", np.linalg.norm(C@xk-b))
-U,info = sp.sparse.linalg.cg(C,b,tol=1e-10,M=MM,callback=callback)
+U,info = sp.sparse.linalg.cg(C,b,tol=1e-10,M=PoissonMM,callback=callback)
 U = steadyNS.poisson.EmbedU(N,NE,B,U)
 
 #%% show poisson solution
@@ -227,7 +227,7 @@ U = steadyNS.poisson.EmbedU(N,NE,B,U)
 # cntr = ax.tricontourf(coordAll[:,0],coordAll[:,1],U,levels=30,cmap="RdBu_r")
 # fig.colorbar(cntr,ax=ax)
 
-#%% set global stiff matrix
+#%% set pressure part of global stiff matrix
 C0 = steadyNS.steadyNS.StiffMat(d,M,N,NE,B,e,E,eMeasure)
 for l in range(d):
     print("C0[",l,"] shape=",C0[l].shape)
@@ -237,62 +237,23 @@ URHIAdd = np.zeros_like(U)
 for l in range(d):
     URHIAdd[l] = C_full@U[l]
 URHIAdd = np.ascontiguousarray(URHIAdd[:,B==0])
-PRHIAdd = np.zeros(M-1)
+PRHIAdd = np.zeros(M)
 for l in range(d):
-    PRHIAdd -= C0[l][:-1]@U[l]
+    PRHIAdd += C0[l]@U[l]
+C0_full = list(x for x in C0)
 for l in range(d):
-    C0[l] = C0[l][:-1,B==0]
+    C0[l] = C0[l][:,B==0]
 
-#%% method 1: solve Schur complement
-k = 0
-# solveC = sp.sparse.linalg.splu(C).solve
-def STOKESITE(U0):
-    global k
-    Urhi = steadyNS.steadyNS.RHI(U0,d,M,N,NE,B,e,E,eMeasure)
-    Urhi -= URHIAdd
-    Prhi = np.zeros(M-1)
-    def solveC(x):
-        tmp,info = sp.sparse.linalg.cg(C,x,tol=1e-12,M=MM)
-        return tmp
-    for l in range(d):
-        Prhi += C0[l]@solveC(Urhi[l])
-    print("solve PRHI: done!")
-    def BABop(x):
-        y = np.zeros_like(x)
-        for l in range(d):
-            y += C0[l]@(solveC(C0[l].transpose()@x))
-        return y
-    BAB = sp.sparse.linalg.LinearOperator((M-1,M-1), matvec=BABop, rmatvec=BABop)
-    k = 0
-    def callback(xk):
-        global k
-        k += 1
-        if k%10==0:
-            print("minres IterNum: ", k)
-    Ptmp,info = sp.sparse.linalg.minres(BAB, Prhi, tol=1e-7, maxiter=200, callback=callback)
-    print("IterNum for solving pressure: ", k, " Precision: ", np.linalg.norm(BAB@Ptmp-Prhi))
-    U = np.zeros_like(U0)
-    for l in range(d):
-        U[l] = solveC(Urhi[l]-C0[l].transpose()@Ptmp)
-    return U,Ptmp
-U0 = np.zeros((d,DN))
-startt = time.time()
-for i in range(3):
-    U1,P1 = STOKESITE(U0)
-    print("Stokes Iter Convergence: ", np.linalg.norm(U0-U1))
-    U0 = U1
-print("elapsed time: ", time.time()-startt)
-U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U0)
-P = np.concatenate([P1,np.zeros(1)])
-
-#%% method 2: solve stokes equation directly
-BigC = sp.sparse.bmat([[C,None,None],[None,C,None],[None,None,C]])
+#%% solve stokes equation directly
+StokesNu = 2
+UP0 = np.zeros(d*DN+M)
+BigC = StokesNu*sp.sparse.bmat([[C,None,None],[None,C,None],[None,None,C]])
 BigC0 = sp.sparse.bmat([[C0[0],C0[1],C0[2]],])
 BigStokes = sp.sparse.bmat([[BigC,BigC0.transpose().tocsr()],[BigC0,None]],format='csr')
 def BigStokesmlOP(x):
     y = x.copy()
     for l in range(d):
-        y[l*DN:(l+1)*DN] = MM@x[l*DN:(l+1)*DN]
+        y[l*DN:(l+1)*DN] = PoissonMM@x[l*DN:(l+1)*DN]*(1/StokesNu)
     return y
 BigStokesMM = sp.sparse.linalg.LinearOperator(shape=BigStokes.shape, matvec=BigStokesmlOP,rmatvec=BigStokesmlOP)
 # BigStokesml = smoothed_aggregation_solver(BigStokes, symmetry='hermitian',strength='symmetric')
@@ -301,9 +262,12 @@ BigStokesMM = sp.sparse.linalg.LinearOperator(shape=BigStokes.shape, matvec=BigS
 def STOKESITE(UP0):
     global k
     U0 = UP0[:d*DN].reshape(d,DN)
+    U0 = steadyNS.steadyNS.EmbedU(d,N,NE,B,U0)
+    ugu,_,_ = steadyNS.steadyNS.UGU(U0,d,M,N,NE,B,e,E,eMeasure,withUplusGU=False,withUGUplus=False)
     UPrhi = np.zeros_like(UP0)
-    UPrhi[:d*DN] = steadyNS.steadyNS.RHI(U0,d,M,N,NE,B,e,E,eMeasure).reshape(-1)
-    UPrhi[:d*DN] -= URHIAdd.reshape(-1)
+    UPrhi[:d*DN] = -ugu[:,B==0].reshape(-1)
+    UPrhi[:d*DN] -= StokesNu*URHIAdd.reshape(-1)
+    UPrhi[d*DN:] -= PRHIAdd
     k = 0
     def callback(xk):
         global k
@@ -315,7 +279,6 @@ def STOKESITE(UP0):
     # UP = solveBigStokes(UPrhi)
     print("Solver Precision: ", np.linalg.norm(BigStokes@UP-UPrhi))
     return UP
-UP0 = np.zeros(d*DN+M-1)
 startt = time.time()
 for i in range(3):
     UP1 = STOKESITE(UP0)
@@ -324,7 +287,57 @@ for i in range(3):
 print("elapsed time: ", time.time()-startt)
 U = UP0[:d*DN].reshape(d,DN)
 U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U)
-P = np.concatenate([UP0[d*DN:],np.zeros(1)])
+P = UP0[d*DN:]
+# P = np.concatenate([UP0[d*DN:],np.zeros(1)])
+
+#%% newton iteration: initial value is from stokes iteration
+# UP0 = np.zeros(d*DN+M)
+# nu = 0.1 # change viscosity here
+Bd = np.concatenate([B,]*d,axis=0)
+def NEWTONITE(UP0,tol):
+    global k
+    U0 = UP0[:d*DN].reshape(d,DN)
+    U0 = steadyNS.steadyNS.EmbedU(d,N,NE,B,U0)
+    ugu,UplusGU,UGUplus = steadyNS.steadyNS.UGU(U0,d,M,N,NE,B,e,E,eMeasure)
+    UPrhi = np.zeros_like(UP0)
+    UPrhi[:d*DN] = ugu[:,B==0].reshape(-1)
+    UPrhi[:d*DN] -= nu*URHIAdd.reshape(-1)
+    UplusGU = UplusGU[Bd==0]
+    UGUplus = UGUplus[Bd==0]
+    NewtonURHIAdd = np.zeros(d*DN)
+    tmp = steadyNS.steadyNS.ReturnU(d,N,NE,B)
+    UPrhi[:d*DN] -= UplusGU@tmp.reshape(-1)
+    UPrhi[:d*DN] -= UGUplus@tmp.reshape(-1)
+    UplusGU = UplusGU[:,Bd==0]
+    UGUplus = UGUplus[:,Bd==0]
+    UPrhi[d*DN:] -= PRHIAdd
+    BigC = nu*sp.sparse.bmat([[C,None,None],[None,C,None],[None,None,C]])+UplusGU+UGUplus
+    BigC0 = sp.sparse.bmat([[C0[0],C0[1],C0[2]],])
+    BigNewton = sp.sparse.bmat([[BigC,BigC0.transpose().tocsr()],[BigC0,None]],format='csr')
+    BigNewtonT = BigNewton.transpose().tocsr()
+    k = 0
+    def callback(xk):
+        global k
+        if k%1000==0:
+            print("bicgstab IterNum: ", k, ' ResNorm: ', np.linalg.norm(BigNewton@xk-UPrhi))
+        k += 1
+    UP,info = sp.sparse.linalg.bicgstab(
+            sp.sparse.linalg.LinearOperator(shape=BigNewton.shape, 
+                matvec=lambda x:BigNewton@x, rmatvec=lambda x:BigNewtonT@x),
+            UPrhi,tol=tol,callback=callback)
+    print("Newton Precision: ", np.linalg.norm(BigNewton@UP-UPrhi))
+    return UP
+tol = [1e-6,1e-6,1e-8,1e-8]+[1e-10,]*100
+startt = time.time()
+for i in range(5):
+    UP1 = NEWTONITE(UP0,tol[i])
+    print("Newton Iter Convergence: ", np.linalg.norm(UP0-UP1))
+    UP0 = UP1
+print("elapsed time: ", time.time()-startt)
+U = UP0[:d*DN].reshape(d,DN)
+U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U)
+P = UP0[d*DN:]
+# P = np.concatenate([UP0[d*DN:],np.zeros(1)])
 
 #%%
 if len(sys.argv)<=1:

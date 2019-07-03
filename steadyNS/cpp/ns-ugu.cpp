@@ -18,8 +18,8 @@ int _UGU(const int C_NUM_UplusGU, const int C_NUM_UGUplus,
         const int nQuad5, const double *W5, const double *Lambda5p, 
         const double *Up, 
         double *ugu, 
-        int *IUplusGU, int *JUplusGU, double *dataUplusGU, 
-        int *IUGUplus, int *JUGUplus, double *dataUGUplus)
+        bool withUplusGU, int *IUplusGU, int *JUplusGU, double *dataUplusGU, 
+        bool withUGUplus, int *IUGUplus, int *JUGUplus, double *dataUGUplus)
 {
     int D = (d+1)*(d+2)/2;
     // convert pointer to TensorAccessor
@@ -89,6 +89,8 @@ int _UGU(const int C_NUM_UplusGU, const int C_NUM_UGUplus,
                 row = l*(N+NE)+ek[j0];
                 for (int i=0; i<nQuad5; ++i) // right hand items
                     ugu[row] += eMeasure[k]*W5[i]*Gamma5[i][j0]*UGU5[i][l];
+                if (withUplusGU)
+                {
                 for (int j1=0; j1<D; ++j1) // UplusGU
                     for (int l1=0; l1<d; ++l1)
                     {
@@ -100,6 +102,9 @@ int _UGU(const int C_NUM_UplusGU, const int C_NUM_UGUplus,
                                 Gamma5[i][j0]*Gamma5[i][j1]*GU5[i][l][l1];
                         ++idxUplusGU;
                     }
+                }
+                if (withUGUplus)
+                {
                 for (int j2=0; j2<D; ++j2) // UGUplus
                 {
                     IUGUplus[idxUGUplus] = row;
@@ -110,10 +115,12 @@ int _UGU(const int C_NUM_UplusGU, const int C_NUM_UGUplus,
                             Gamma5[i][j0]*UG5[i][j2];
                     ++idxUGUplus;
                 }
+                }
             }
         }
     }
-    if (idxUGUplus!=C_NUM_UGUplus || idxUplusGU!=C_NUM_UplusGU)
+    if ((withUGUplus && idxUGUplus!=C_NUM_UGUplus) 
+            || (withUplusGU && idxUplusGU!=C_NUM_UplusGU))
     {
         cout << "error with C_NUM_UGUplus or C_NUM_UplusGU" << endl;
         exit(0);

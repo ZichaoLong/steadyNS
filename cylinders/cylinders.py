@@ -177,8 +177,8 @@ if C.shape[0]<2000:
 #%% test poisson solver
 import pyamg
 from pyamg.aggregation import smoothed_aggregation_solver
-ml = smoothed_aggregation_solver(C, symmetry='hermitian',strength='symmetric')
-MM = ml.aspreconditioner(cycle='V')
+PoissonML = smoothed_aggregation_solver(C,symmetry='hermitian',strength='symmetric')
+PoissonMM = PoissonML.aspreconditioner(cycle='V')
 U = steadyNS.poisson.ReturnU(N,NE,B)
 URHIAdd_poisson = C_full@U
 URHIAdd_poisson = np.ascontiguousarray(URHIAdd_poisson[B==0])
@@ -188,7 +188,7 @@ def callback(xk):
     global k
     k += 1
     return print("iter: ", k, "ResNorm: ", np.linalg.norm(C@xk-b))
-U,info = sp.sparse.linalg.cg(C,b,tol=1e-10,M=MM,callback=callback)
+U,info = sp.sparse.linalg.cg(C,b,tol=1e-10,M=PoissonMM,callback=callback)
 U = steadyNS.poisson.EmbedU(N,NE,B,U)
 
 #%% show poisson solution
@@ -230,7 +230,6 @@ def STOKESITE(UP0):
     ugu,UplusGU,UGUplus = steadyNS.steadyNS.UGU(U0,d,M,N,NE,B,e,E,eMeasure)
     UPrhi = np.zeros_like(UP0)
     UPrhi[:d*DN] = -ugu[:,B==0].reshape(-1)
-    print(nu)
     UPrhi[:d*DN] -= nu*URHIAdd.reshape(-1)
     UPrhi[d*DN:] -= PRHIAdd
     UP = solveBigStokes(UPrhi)

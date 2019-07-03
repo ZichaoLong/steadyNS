@@ -41,8 +41,8 @@ int _UGU(const int C_NUM_UplusGU, const int C_NUM_UGUplus,
         const int nQuad5, const double *W5, const double *Lambda5p, 
         const double *Up, 
         double *ugu, 
-        int *IUplusGU, int *JUplusGU, double *dataUplusGU, 
-        int *IUGUplus, int *JUGUplus, double *dataUGUplus);
+        bool withUplusGU, int *IUplusGU, int *JUplusGU, double *dataUplusGU, 
+        bool withUGUplus, int *IUGUplus, int *JUGUplus, double *dataUGUplus);
 int _sourceF(const int d, const int M, const int N, const int NE, 
         const int *B, const int *ep, const double *Ep, const double *eMeasure, 
         const int nQuad4, const double *W4, const double *Lambda4p, 
