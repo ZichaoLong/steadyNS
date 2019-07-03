@@ -16,7 +16,7 @@ nu = 2
 d = 2;
 maxx = 1;
 maxy = 1;
-lcar = 0.01;
+lcar = 0.02;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
 else:
@@ -150,7 +150,7 @@ C0 = steadyNS.steadyNS.StiffMat(d,M,N,NE,B,e,E,eMeasure)
 for l in range(d):
     print("C0[",l,"] shape=",C0[l].shape)
     print("C0[",l,"] nnz=",C0[l].nnz)
-U = steadyNS.steadyNS.ReturnU(d,N,NE,B)
+U = steadyNS.steadyNS.ReturnU(nu,d,N,NE,B,coordAll,coordEle)
 URHIAdd = np.zeros_like(U)
 for l in range(d):
     URHIAdd[l] = C_full@U[l]
@@ -161,6 +161,11 @@ for l in range(d):
 C0_full = list(x for x in C0)
 for l in range(d):
     C0[l] = C0[l][:-1,B==0]
+
+#%% set source force and true solution
+U_true,P_true,F = steadyNS.steadyNS.TrueUPF(nu,d,N,NE,coordAll,coordEle)
+SourceForce = steadyNS.steadyNS.sourceF(F,d,M,N,NE,B,e,E,eMeasure)
+SourceForce = SourceForce[:,B==0]
 
 #%% solve stokes equation directly
 UP0 = np.zeros(d*DN+M-1)
@@ -173,12 +178,13 @@ solveBigStokes = sp.sparse.linalg.splu(BigStokes).solve
 def STOKESITE(UP0):
     global k
     U0 = UP0[:d*DN].reshape(d,DN)
-    U0 = steadyNS.steadyNS.EmbedU(d,N,NE,B,U0)
+    U0 = steadyNS.steadyNS.EmbedU(nu,d,N,NE,B,U0,coordAll,coordEle)
     ugu,UplusGU,UGUplus = steadyNS.steadyNS.UGU(U0,d,M,N,NE,B,e,E,eMeasure)
     UPrhi = np.zeros_like(UP0)
     UPrhi[:d*DN] = -ugu[:,B==0].reshape(-1)
     print(nu)
     UPrhi[:d*DN] -= nu*URHIAdd.reshape(-1)
+    UPrhi[:d*DN] += SourceForce.reshape(-1)
     UPrhi[d*DN:] -= PRHIAdd[:-1]
     UP = solveBigStokes(UPrhi)
     print("Solver Precision: ", np.linalg.norm(BigStokes@UP-UPrhi))
@@ -190,7 +196,7 @@ for i in range(10):
     UP0 = UP1
 print("elapsed time: ", time.time()-startt)
 U = UP0[:d*DN].reshape(d,DN)
-U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U)
+U = steadyNS.steadyNS.EmbedU(nu,d,N,NE,B,U,coordAll,coordEle)
 # P = UP0[d*DN:]
 P = np.concatenate([UP0[d*DN:],np.zeros(1)])
 del solveBigStokes
@@ -198,22 +204,20 @@ del BigStokes
 
 #%% newton iteration: initial value is from stokes iteration
 # UP0 = np.zeros(d*DN+M-1)
-print("Previously nu =",nu)
-nu = 0.1 # change viscosity here
-print("Now nu =",nu)
 Bd = np.concatenate([B,]*d,axis=0)
 def NEWTONITE(UP0):
     global k
     U0 = UP0[:d*DN].reshape(d,DN)
-    U0 = steadyNS.steadyNS.EmbedU(d,N,NE,B,U0)
+    U0 = steadyNS.steadyNS.EmbedU(nu,d,N,NE,B,U0,coordAll,coordEle)
     ugu,UplusGU,UGUplus = steadyNS.steadyNS.UGU(U0,d,M,N,NE,B,e,E,eMeasure)
     UPrhi = np.zeros_like(UP0)
     UPrhi[:d*DN] = ugu[:,B==0].reshape(-1)
     UPrhi[:d*DN] -= nu*URHIAdd.reshape(-1)
+    UPrhi[:d*DN] += SourceForce.reshape(-1)
     UplusGU = UplusGU[Bd==0]
     UGUplus = UGUplus[Bd==0]
     NewtonURHIAdd = np.zeros(d*DN)
-    tmp = steadyNS.steadyNS.ReturnU(d,N,NE,B)
+    tmp = steadyNS.steadyNS.ReturnU(nu,d,N,NE,B,coordAll,coordEle)
     UPrhi[:d*DN] -= UplusGU@tmp.reshape(-1)
     UPrhi[:d*DN] -= UGUplus@tmp.reshape(-1)
     UplusGU = UplusGU[:,Bd==0]
@@ -232,11 +236,13 @@ for i in range(5):
     UP0 = UP1
 print("elapsed time: ", time.time()-startt)
 U = UP0[:d*DN].reshape(d,DN)
-U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U)
+U = steadyNS.steadyNS.EmbedU(nu,d,N,NE,B,U,coordAll,coordEle)
 # P = UP0[d*DN:]
 P = np.concatenate([UP0[d*DN:],np.zeros(1)])
 
 #%%
+print("U err: ", np.linalg.norm(U-U_true))
+print("P err: ", np.linalg.norm(P-P_true-np.mean(P-P_true)))
 # quiver
 fig = plt.figure(figsize=(8,8))
 ax = fig.add_subplot(111)

@@ -40,13 +40,28 @@ def StiffMat(d,M,N,NE,B,e,E,eMeasure):
         C[l] = C[l].tocsr()
     return C
 
-def ReturnU(d,N,NE,B):
-    U = np.zeros((d,N+NE))
-    U[1,B==1] = 1
+def TrueUPF(nu,d,N,NE,coordAll,coordEle):
+    alpha = 1
+    U_true = np.zeros([d,N+NE])
+    U_true[0] = alpha*coordAll[:,0]*(coordAll[:,0]-1)*(2*coordAll[:,1]-1)
+    U_true[1] = -alpha*coordAll[:,1]*(coordAll[:,1]-1)*(2*coordAll[:,0]-1)
+    U0x_true = alpha*(2*coordAll[:,0]-1)*(2*coordAll[:,1]-1)
+    U0y_true = 2*alpha*coordAll[:,0]*(coordAll[:,0]-1)
+    U1y_true = -U0x_true
+    U1x_true = -2*alpha*coordAll[:,1]*(coordAll[:,1]-1)
+    P_true = alpha*(2*coordEle[:,0]-1)*(2*coordEle[:,1]-1)
+    F = np.zeros([d,N+NE])
+    F[0] = (1-nu)*2*alpha*(2*coordAll[:,1]-1)+(U_true[0]*U0x_true+U_true[1]*U0y_true)
+    F[1] = (1+nu)*2*alpha*(2*coordAll[:,0]-1)+(U_true[0]*U1x_true+U_true[1]*U1y_true)
+    return U_true,P_true,F
+
+def ReturnU(nu,d,N,NE,B,coordAll,coordEle):
+    U,_,_ = TrueUPF(nu,d,N,NE,coordAll,coordEle)
+    U[:,B==0] = 0
     return U
 
-def EmbedU(d,N,NE,B,U0):
-    U = ReturnU(d,N,NE,B)
+def EmbedU(nu,d,N,NE,B,U0,coordAll,coordEle):
+    U = ReturnU(nu,d,N,NE,B,coordAll,coordEle)
     for l in range(d):
         U[l,B==0] = U0[l]
     return U
