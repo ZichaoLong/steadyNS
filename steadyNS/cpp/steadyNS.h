@@ -47,6 +47,9 @@ int _sourceF(const int d, const int M, const int N, const int NE,
         const int *B, const int *ep, const double *Ep, const double *eMeasure, 
         const int nQuad4, const double *W4, const double *Lambda4p, 
         const double *Fp, double *rhi);
+int _CsrMulVec(const int M, const int nnz, 
+        const int *IA, const int *JA, const double *data, 
+        const double *x, double *y);
 
 int UpdateStiffMatTheta1Sum(const int d, const int D, const TensorAccessor<const double,2> &Ek,
         const int nQuad1, const double *W1, const TensorAccessor<const double,2> &Lambda1,

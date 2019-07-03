@@ -1,3 +1,11 @@
+# distutils: language = c++
+# cython: language_level=3
+
+cdef extern from "steadyNS.h":
+    int _CsrMulVec(const int M, const int nnz, 
+            const int *IA, const int *JA, const double *data, 
+            const double *x, double *y)
+
 import numpy as np
 from scipy.sparse.linalg.interface import IdentityOperator
 
@@ -31,3 +39,16 @@ def CG(A,b,x0=None,tol=1e-5,maxiter=20,M=None,callback=None):
         r = r-alpha*w
     return x
 
+def CsrMulVec(A,x):
+    y = np.zeros_like(x)
+    M = A.shape[0]
+    nnz = A.nnz
+    assert(type(x)==np.ndarray and x.size==M)
+    cdef int[::1] IA = A.indptr
+    cdef int[::1] JA = A.indices
+    cdef double[::1] data = A.data
+    x = np.ascontiguousarray(x)
+    cdef double[::1] xp = x
+    cdef double[::1] yp = y
+    _CsrMulVec(M,nnz,&IA[0],&JA[0],&data[0],&xp[0],&yp[0])
+    return y

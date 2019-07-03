@@ -140,3 +140,16 @@ int CalculateTrGU(const int d, const int nQuad,
     return 0;
 }
 
+int _CsrMulVec(const int M, const int nnz, 
+        const int *IA, const int *JA, const double *data, 
+        const double *x, double *y)
+{
+#pragma omp parallel for schedule(static)
+    for (int i=0; i<M; ++i)
+        y[i] = 0;
+#pragma omp parallel for schedule(guided)
+    for (int i=0; i<M; ++i)
+        for (int j=IA[i]; j<IA[i+1]; ++j)
+            y[i] += data[j]*x[JA[j]];
+    return 0;
+}
