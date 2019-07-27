@@ -12,10 +12,10 @@
 #include "ASTen/Tensor.h"
 using std::cout; using std::endl; using std::ends;
 
-int _sourceF(const int d, const int M, const int N, const int NE, 
-        const int *B, const int *ep, const double *Ep, const double *eMeasure, 
+int _sourceFOO(const int C_NUM, const int d, const int M, const int N, const int NE, 
+        const int *ep, const double *Ep, const double *eMeasure, 
         const int nQuad4, const double *W4, const double *Lambda4p, 
-        const double *Fp, double *rhi)
+        int *I, int *J, double *data)
 {
     int D = (d+1)*(d+2)/2;
     // convert pointer to TensorAccessor
@@ -40,26 +40,22 @@ int _sourceF(const int d, const int M, const int N, const int NE,
                 VU4[j0][j1] += W4[i]*Gamma4[i][j0]*Gamma4[i][j1];
         }
 
-    for (int i=0; i<d*(N+NE); ++i)
-        rhi[i] = 0;
-
+    int idx = 0;
     for (int k=0; k<M; ++k)
     {
-        Tensor<double,2> FeTensor({D,d});
-        TensorAccessor<double,2> Fe = FeTensor.accessor();
         const int *ek = e[k].data();
-        for (int j=0; j<D; ++j) // update Ue
-            for (int l=0; l<d; ++l)
-                Fe[j][l] = Fp[l*(N+NE)+ek[j]];
-        int row = 0;
         for (int j0=0; j0<D; ++j0)
-            for (int l=0; l<d; ++l)
+        {
+            int row = ek[j0];
+            for (int j1=0; j1<D; ++j1)
             {
-                row = l*(N+NE)+ek[j0];
-                for (int j1=0; j1<D; ++j1)
-                    rhi[row] += eMeasure[k]*VU4[j0][j1]*Fe[j1][l];
+                I[idx] = row;
+                J[idx] = ek[j1];
+                data[idx] = eMeasure[k]*VU4[j0][j1];
+                ++idx;
             }
+        }
     }
-    return 0;
+    return idx;
 }
 

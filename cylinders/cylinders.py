@@ -12,7 +12,7 @@ import time
 import steadyNS
 import matplotlib.pyplot as plt
 
-nu = 2
+nu = 0.1
 d = 2;
 maxx = 24;
 maxy = 8;
@@ -43,9 +43,9 @@ model.add("cylinder")
 # if no external configure is available, x=4,y=2,d=1 is used by default
 Cylinders = []
 if len(argv)<3:
-    Cylinders.append(dict(x=6,y=4,d=1))
-    # Cylinders.append(dict(x=5.5,y=3.5,d=1))
-    # Cylinders.append(dict(x=6.5,y=4.5,d=1))
+    # Cylinders.append(dict(x=6,y=4,d=1))
+    Cylinders.append(dict(x=5.5,y=3.5,d=1))
+    Cylinders.append(dict(x=6.5,y=4.5,d=1))
 else:
     k = 0
     while len(argv)-k>=3:
@@ -161,9 +161,10 @@ DN = (B==0).sum()
 print("number of free nodes/edges for velocity: ", DN)
 
 #%% set global stiff matrix for poisson equation
-C_NUM = steadyNS.poisson.Poisson_countStiffMatData(d,M,N,NE,B,e)
+D = (d+1)*(d+2)//2
+C_NUM = D*D*M
 print("non-zero number of C_OO=",C_NUM)
-C = steadyNS.poisson.Poisson_StiffMat(C_NUM,d,M,N,NE,B,e,E,eMeasure)
+C = steadyNS.poisson.P2StiffMat(d,M,N,NE,e,E,eMeasure)
 C_full = C
 print("C shape=",C.shape)
 print("C nnz=",C.nnz)
@@ -198,95 +199,163 @@ ax.tricontour(coordAll[:,0],coordAll[:,1],U,levels=30,linewidths=0.5,colors='k')
 cntr = ax.tricontourf(coordAll[:,0],coordAll[:,1],U,levels=30,cmap="RdBu_r")
 fig.colorbar(cntr,ax=ax)
 
+#%% set source F 
+CF = steadyNS.steadyNS.sourceF(d,M,N,NE,e,E,eMeasure)
+print("CF shape=",CF.shape)
+print("CF nnz=",CF.nnz)
+CF_full = CF
+CF = CF[B==0]
+CF = CF[:,B==0]
+
 #%% set pressure part of global stiff matrix
-C0 = steadyNS.steadyNS.StiffMat(d,M,N,NE,B,e,E,eMeasure)
+C0 = steadyNS.steadyNS.QGU(d,M,N,NE,e,E,eMeasure)
 for l in range(d):
     print("C0[",l,"] shape=",C0[l].shape)
     print("C0[",l,"] nnz=",C0[l].nnz)
+C0_full = list(x for x in C0)
+for l in range(d):
+    C0[l] = C0[l][:,B==0]
+
+#%% set URHIADD, PRHIADD
 U = steadyNS.steadyNS.ReturnU(d,N,NE,B)
 URHIAdd = np.zeros_like(U)
 for l in range(d):
     URHIAdd[l] = C_full@U[l]
 URHIAdd = np.ascontiguousarray(URHIAdd[:,B==0])
-PRHIAdd = np.zeros(M)
+PRHIAdd = np.zeros(N)
 for l in range(d):
-    PRHIAdd += C0[l]@U[l]
-C0_full = list(x for x in C0)
+    PRHIAdd += C0_full[l]@U[l]
+
+#%% pressure correction method step 0: set linear system
+dt = 0.1
+nu = nu
+PrintInfo = False
+# BigC = nu*sp.sparse.bmat([[C,None],[None,C]])
+# solveBigStokes = sp.sparse.linalg.splu(BigStokes).solve
+
+STEP0LinearSystem = (CF/dt+nu*C).tocsr()
+STEP0ML = smoothed_aggregation_solver(STEP0LinearSystem,symmetry='hermitian',strength='symmetric')
+STEP0MM = STEP0ML.aspreconditioner(cycle='V')
+STEP0LinearSystemOPFUNC = lambda x:steadyNS.utils.CsrMulVec(STEP0LinearSystem, x)
+STEP0LinearSystemOP = sp.sparse.linalg.LinearOperator(shape=STEP0LinearSystem.shape,
+        matvec=STEP0LinearSystemOPFUNC, rmatvec=STEP0LinearSystemOPFUNC)
+def STEP0(U0):
+    global k
+    U0 = U0.reshape(d,DN)
+    ugu = steadyNS.steadyNS.UGU(steadyNS.steadyNS.EmbedU(d,N,NE,B,U0),
+            d,M,N,NE,e,E,eMeasure)
+    STEP0rhi = -ugu[:,B==0]
+    for l in range(d):
+        STEP0rhi[l] += steadyNS.utils.CsrMulVec(CF, U0[l]/dt)
+    STEP0rhi -= nu*URHIAdd
+    def callback(xk):
+        global k
+        k += 1
+        if PrintInfo:
+            print("iter: ", k, "ResNorm: ", np.linalg.norm(STEP0LinearSystemOP@xk-b))
+        return 
+    Utilde = np.zeros((d,DN))
+    tmp = 0
+    iternum = 0
+    for l in range(d):
+        k = 0
+        b = STEP0rhi[l]
+        Utilde[l],iternumtmp = steadyNS.utils.CG(STEP0LinearSystemOP, b, 
+                x0=U0[l], tol=1e-10, maxiter=50, 
+                M=STEP0MM, callback=callback)
+        tmp +=  np.linalg.norm(STEP0LinearSystemOP@Utilde[l]-STEP0rhi[l])
+        iternum += iternumtmp
+    print("STEP0 IterNum: ", iternum, "Precision: ", tmp)
+    return Utilde
+
+#%% pressure correction method step 1: set linear system
+diagCF = CF.diagonal()
+diagCF = sp.sparse.dia_matrix((diagCF,0),shape=CF.shape).tocsr()
+diagCF.data[:] = 1/diagCF.data
+CFOPFUNC = lambda x:steadyNS.utils.CsrMulVec(CF,x)
+CFOP = sp.sparse.linalg.LinearOperator(shape=CF.shape,
+        matvec=CFOPFUNC, rmatvec=CFOPFUNC)
+diagCFOPFUNC = lambda x:steadyNS.utils.CsrMulVec(diagCF,x)
+diagCFOP = sp.sparse.linalg.LinearOperator(shape=diagCF.shape,
+        matvec=diagCFOPFUNC, rmatvec=diagCFOPFUNC)
+CFSolver = lambda x: steadyNS.utils.CG(CFOP, x, 
+        tol=1e-10, maxiter=50, M=diagCFOP)[0]
+C0transpose = list(C0[l].transpose().tocsr() for l in range(d))
+def PLinearSystemOP(x):
+    y = np.zeros_like(x)
+    for l in range(d):
+        y += steadyNS.utils.CsrMulVec(C0[l],
+                CFSolver(steadyNS.utils.CsrMulVec(C0transpose[l],x))
+                )
+    return y
+PLinearSystem = sp.sparse.linalg.LinearOperator(shape=[C0[0].shape[0],]*2,matvec=PLinearSystemOP,rmatvec=PLinearSystemOP)
+PrePLinearSystem = 0
 for l in range(d):
-    C0[l] = C0[l][:,B==0]
-
-#%% solve stokes equation directly
-UP0 = np.zeros(d*DN+M)
-BigC = nu*sp.sparse.bmat([[C,None],[None,C]])
-BigC0 = sp.sparse.bmat([[C0[0],C0[1]],])
-BigStokes = sp.sparse.bmat([[BigC,BigC0.transpose().tocsr()],[BigC0,None]],format='csr')
-BigStokesml = smoothed_aggregation_solver(BigStokes,symmetry='hermitian',strength='symmetric')
-BigStokesMM = BigStokesml.aspreconditioner(cycle='V')
-solveBigStokes = sp.sparse.linalg.splu(BigStokes).solve
-def STOKESITE(UP0):
+    PrePLinearSystem = PrePLinearSystem+C0[l]@(diagCF@C0[l].transpose())
+PrePLinearSystemML = smoothed_aggregation_solver(PrePLinearSystem,symmetry='hermitian',strength='symmetric')
+PrePLinearSystemMM = PrePLinearSystemML.aspreconditioner(cycle='V')
+def STEP1(Utilde,P0=None):
     global k
-    U0 = UP0[:d*DN].reshape(d,DN)
-    U0 = steadyNS.steadyNS.EmbedU(d,N,NE,B,U0)
-    ugu,UplusGU,UGUplus = steadyNS.steadyNS.UGU(U0,d,M,N,NE,B,e,E,eMeasure)
-    UPrhi = np.zeros_like(UP0)
-    UPrhi[:d*DN] = -ugu[:,B==0].reshape(-1)
-    UPrhi[:d*DN] -= nu*URHIAdd.reshape(-1)
-    UPrhi[d*DN:] -= PRHIAdd
-    UP = solveBigStokes(UPrhi)
-    print("Solver Precision: ", np.linalg.norm(BigStokes@UP-UPrhi))
-    return UP
-startt = time.time()
-for i in range(10):
-    UP1 = STOKESITE(UP0)
-    print("Stokes Iter Convergence: ", np.linalg.norm(UP0-UP1))
-    UP0 = UP1
-print("elapsed time: ", time.time()-startt)
-U = UP0[:d*DN].reshape(d,DN)
-U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U)
-P = UP0[d*DN:]
-# P = np.concatenate([UP0[d*DN:],np.zeros(1)])
-del solveBigStokes
-del BigStokes
+    U = Utilde.copy().reshape(d,DN)
+    Prhi = 0
+    for l in range(d):
+        Prhi = Prhi-steadyNS.utils.CsrMulVec(C0[l],U[l])
+    Prhi -= PRHIAdd
+    Prhi *= 1/dt
+    def callback(xk):
+        global k
+        k += 1
+        if PrintInfo:
+            print("iter: ", k, "ResNorm: ", np.linalg.norm(PLinearSystem@xk-Prhi))
+        return 
+    k = 0
+    P0 = (np.zeros_like(Prhi) if P0 is None else P0)
+    P,iternum = steadyNS.utils.CG(PLinearSystem,Prhi,x0=P0,tol=1e-10,maxiter=50,M=PrePLinearSystemMM,callback=callback)
+    print("STEP1 IterNum: ", iternum, "Precision: ", np.linalg.norm(PLinearSystem@P-Prhi))
+    for l in range(d):
+        U[l] += dt*CFSolver(steadyNS.utils.CsrMulVec(C0transpose[l],P))
+    return U,P
 
-#%% newton iteration: initial value is from stokes iteration
-# UP0 = np.zeros(d*DN+M-1)
-# nu = 0.1 # change viscosity here
-Bd = np.concatenate([B,]*d,axis=0)
-def NEWTONITE(UP0):
-    global k
-    U0 = UP0[:d*DN].reshape(d,DN)
-    U0 = steadyNS.steadyNS.EmbedU(d,N,NE,B,U0)
-    ugu,UplusGU,UGUplus = steadyNS.steadyNS.UGU(U0,d,M,N,NE,B,e,E,eMeasure)
-    UPrhi = np.zeros_like(UP0)
-    UPrhi[:d*DN] = ugu[:,B==0].reshape(-1)
-    UPrhi[:d*DN] -= nu*URHIAdd.reshape(-1)
-    UplusGU = UplusGU[Bd==0]
-    UGUplus = UGUplus[Bd==0]
-    NewtonURHIAdd = np.zeros(d*DN)
-    tmp = steadyNS.steadyNS.ReturnU(d,N,NE,B)
-    UPrhi[:d*DN] -= UplusGU@tmp.reshape(-1)
-    UPrhi[:d*DN] -= UGUplus@tmp.reshape(-1)
-    UplusGU = UplusGU[:,Bd==0]
-    UGUplus = UGUplus[:,Bd==0]
-    UPrhi[d*DN:] -= PRHIAdd
-    BigC = nu*sp.sparse.bmat([[C,None],[None,C]])+UplusGU+UGUplus
-    BigC0 = sp.sparse.bmat([[C0[0],C0[1]],])
-    BigNewton = sp.sparse.bmat([[BigC,BigC0.transpose().tocsr()],[BigC0,None]],format='csr')
-    UP = sp.sparse.linalg.spsolve(BigNewton, UPrhi)
-    print("Newton Precision: ", np.linalg.norm(BigNewton@UP-UPrhi))
-    return UP
+#%% test pressure correction method step0, step1
+PrintInfo = True
+U0 = np.zeros((d,DN))
 startt = time.time()
-for i in range(5):
-    UP1 = NEWTONITE(UP0)
-    print("Newton Iter Convergence: ", np.linalg.norm(UP0-UP1))
-    UP0 = UP1
+Utilde = STEP0(U0)
+print("step0 elapsed time: ", time.time()-startt)
+startt = time.time()
+U1,P = STEP1(Utilde)
+print("step1 elapsed time: ", time.time()-startt)
+
+#%% pressure correction method
+U0 = np.zeros((d,DN))
+ALLCONVERGE = []
+PrintInfo = False
+startt = time.time()
+for steps in range(2000):
+    Utilde = STEP0(U0)
+    if steps==0:
+        U1,P = STEP1(Utilde)
+    else:
+        U1,P = STEP1(Utilde,P)
+    CONVERGE = np.abs(U1-U0).max()/dt
+    ALLCONVERGE.append(CONVERGE)
+    DIVERGENCENORM = PRHIAdd
+    for l in range(d):
+        DIVERGENCENORM = DIVERGENCENORM+C0[l]@U1[l]
+    DIVERGENCENORM = np.linalg.norm(DIVERGENCENORM)
+    print("ITER: ", steps, "div U1: {:.2e}".format(DIVERGENCENORM), "max(|U1-U0|/dt): {:.2e}".format(CONVERGE))
+    U0 = U1
+    if CONVERGE<1e-5:
+        break
 print("elapsed time: ", time.time()-startt)
-U = UP0[:d*DN].reshape(d,DN)
-U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U)
-P = UP0[d*DN:]
-# P = np.concatenate([UP0[d*DN:],np.zeros(1)])
+U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U1)
 
 #%%
+# ALLCONVERGE
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.set_yscale('log')
+ax.plot(ALLCONVERGE)
 # quiver
 fig = plt.figure(figsize=(maxx//2,maxy//2))
 ax = fig.add_subplot(111)
@@ -316,16 +385,16 @@ ax.plot(coordAll[B==4,0],coordAll[B==4,1],'kD', ms=2)
 # pressure
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
-PSelect = np.ndarray(M,dtype=bool)
+PSelect = np.ndarray(N,dtype=bool)
 PSelect[:] = False
 # PSelect = np.abs(P)<0.25
 for cylinder in Cylinders:
-    tmp = np.sqrt((coordEle[:,0]-cylinder['x'])**2+(coordEle[:,1]-cylinder['y'])**2)
+    tmp = np.sqrt((coord[:,0]-cylinder['x'])**2+(coord[:,1]-cylinder['y'])**2)
     tmp = np.abs(tmp-cylinder['d']/2)
     tmp = tmp<1
     PSelect = PSelect | tmp
-ax.tricontour(coordEle[PSelect,0],coordEle[PSelect,1],P[PSelect],levels=14,linewidths=0.5,colors='k')
-cntr = ax.tricontourf(coordEle[PSelect,0],coordEle[PSelect,1],P[PSelect],levels=14,cmap="RdBu_r")
+ax.tricontour(coord[PSelect,0],coord[PSelect,1],P[PSelect],levels=14,linewidths=0.5,colors='k')
+cntr = ax.tricontourf(coord[PSelect,0],coord[PSelect,1],P[PSelect],levels=14,cmap="RdBu_r")
 fig.colorbar(cntr,ax=ax)
 
 #%%

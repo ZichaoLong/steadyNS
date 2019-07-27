@@ -3,14 +3,13 @@ From now on, we will draw the basic conclusions for local stiffness matrix.
 Consider two quadratic vector functions $u,v$ and a constant function $p\in\mr$ on element $e$.
 In this case, $u,v$ can be writen as $u,v\in\mr^{(d+1)(d+2)/2\times3}$.
 Before deriving these basic conclusions, we would like to introduce a few basic new notations:
-we use $\Lambda_n\in\mr^{\text{nQuad}\times (d+1)}$ to represent the $n$th-order quadrature points, 
-and $W_n\in\mr^{\text{nQuad}}$ the corresponding weight.
-$\lambda_2(x)\in\mr^{(d+1)(d+2)/2},
-\nabla \lambda_2(x)\in\mr^{(d+1)(d+2)/2\times d},
-x\in\{\Lambda_n[i]:i=0,\cdots,\text{nQuad}\}$ 
-will be pre-computed and stored in the tensors 
-$\Gamma_n\in\mr^{\text{nQuad}\times(d+1)(d+2)/2},
-\Theta_n^e\in\mr^{\text{nQuad}\times(d+1)(d+2)/2\times d}$
+\begin{itemize}
+  \item $\Lambda_n\in\mr^{\text{nQuad}\times (d+1)}$ the $n$th-order quadrature points, 
+  \item $W_n\in\mr^{\text{nQuad}}$ the corresponding weight for quadrature points.
+  \item $\Gamma_n\in\mr^{\text{nQuad}\times(d+1)(d+2)/2}$: $\lambda_2(x)\in\mr^{(d+1)(d+2)/2}, x=\Lambda_n[i]$ 
+  \item $\Theta_n^e\in\mr^{\text{nQuad}\times(d+1)(d+2)/2\times d}$: 
+$\nabla \lambda_2(x)\in\mr^{(d+1)(d+2)/2\times d}, x=\Lambda_n[i]$ 
+\end{itemize}
 where the value of $\Theta^e_n$ is depend on the element geometry $e$.
 Then the funciton value and the $1$st-order derivative of $u$ at points $\Lambda_n[i]$ can be represented as
 \[
@@ -60,19 +59,19 @@ We denote this function as $v^{j_0,l}$.
     for Stokes iteration, $\sum_{i,l'}W_2[i]\Theta_2^e[i,j_0,l']\Theta_2^e[i,j_1,l']$
     would be used only once.
 
-  \item $1$st-order
+  \item $2$nd-order
     \begin{equation}\label{eq:integral-pgv}
       \begin{split}
-        \bm{\int_e p\nabla\cdot v^{j_0,l}\ud x} &= |e| \sum_i W_1[i]\cdot p\cdot 
-        \nabla v^{j_0,l}(\Lambda_1[i]) \\
-        &= |e| p\sum_i W_1[i] \Theta_1[i,j_0,l]
+        \bm{\int_e p\nabla\cdot v^{j_0,l}\ud x} &= |e| \sum_i W_2[i]\cdot p\cdot 
+        \nabla v^{j_0,l}(\Lambda_2[i]) \\
+        &= |e| \sum_iW_2[i]\Theta_2[i,j_0,l]\sum_{j_1}p[j_1]\Lambda_2[i,j_1]
       \end{split}
     \end{equation}
     \begin{equation}\label{eq:integral-qgu}
       \begin{split}
-        \bm{\int_e q\nabla\cdot u\ud x} &= |e| \sum_i qW_1[i]\cdot 
+        \bm{\int_e q^{j_0}\nabla\cdot u\ud x} &= |e| \sum_i q^{j_0}W_2[i]\cdot 
         \nabla \cdot u(\Lambda_1[i]) \\
-        &= |e|q \sum_{j,l}\sum_{i} W_i[i]\Theta_1[i,j,l]\cdot u[j,l]
+        &= |e|\sum_{i} W_2[i]\Lambda_2[i,j_0]\sum_{j_1,l}\Theta_2[i,j_1,l]\cdot u[j_1,l]
       \end{split}
     \end{equation}
 

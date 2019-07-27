@@ -12,10 +12,9 @@
 #include "ASTen/Tensor.h"
 using std::cout; using std::endl; using std::ends;
 
-int _Poisson_StiffMatOO(const int C_NUM, const int d,
+int _P2StiffMatOO(const int C_NUM, const int d,
         const int M, const int N, const int NE, 
-        const int *B, const int *ep, 
-        const double *Ep, const double *eMeasure, 
+        const int *ep, const double *Ep, const double *eMeasure, 
         const int nQuad2, const double *W2, const double *Lambda2p, 
         int *I, int *J, double *data)
 {
@@ -39,11 +38,9 @@ int _Poisson_StiffMatOO(const int C_NUM, const int d,
         UpdateStiffMatTheta2Sum(d, D, E[k], nQuad2, W2, Lambda2, Theta2Sum);
         // stiffness matrix for $v^{j0}$, row=e[k][j0]
         const int *ek = e[k].data();
-        int row = -1;
         for (int j0=0; j0<D; ++j0)
         {
-            row = ek[j0];
-            if (B[row]>0) continue;
+            int row = ek[j0];
             for (int j1=0; j1<D; ++j1)
             {
                 I[idx] = row;
@@ -56,20 +53,3 @@ int _Poisson_StiffMatOO(const int C_NUM, const int d,
     return idx;
 }
 
-int _Poisson_countStiffMatData(const int d, const int M, const int N, const int NE,
-        const int *B, const int *ep)
-{
-    int COUNT=0;
-    int D = (d+1)*(d+2)/2;
-    // convert pointer to TensorAccessor
-    int esize[] = {M,D}; int estride[] = {D,1};
-    TensorAccessor<const int,2> e(ep,esize,estride);
-#pragma omp parallel for schedule(static) reduction(+:COUNT)
-    for (int k=0; k<M; ++k)
-        for (int j0=0; j0<D; ++j0)
-            if (B[e[k][j0]]>0) 
-                continue;
-            else 
-                COUNT += D;
-    return COUNT;
-}

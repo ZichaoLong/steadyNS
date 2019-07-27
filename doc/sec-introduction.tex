@@ -1,22 +1,25 @@
 \section{Introduction}
-In this report, we consider Stokes iterative finite element method\cite{xu2013some} 
-for steady incompressible Navier-Stokes equations\eqref{eq:Navier-Stokes} 
+In this report, we consider a pressure correction method for incompressible Navier-Stokes equations\eqref{eq:Navier-Stokes} 
 with a not so high Reynolds number:
 \begin{equation}\label{eq:Navier-Stokes}
   \left\{
     \begin{array}{ll}
-      -\nu\Delta u+(u\cdot\nabla)u+\nabla p=f, & \text{in } \Omega, \\
+      \frac{\pd u}{\pd t}-\nu\Delta u+(u\cdot\nabla)u+\nabla p=f, & \text{in } \Omega, \\
       \nabla\cdot u=0,                         & \text{in } \Omega, \\
       \int_\Omega p\ud x = 0,                 & \text{in } \Omega, \\
       u = u_0,                                  & \text{on } \pd\Omega.
     \end{array}
     \right.
 \end{equation}
-The steady incompressible Navier-Stokes equations describes 
+The pressure correction method can be formulated as:
+\begin{equation}\label{eq:iter}
+  \begin{split}
+    & \frac{1}{\delta t}(\tilde{u}^+-u)-\nu\Delta \tilde{u}^++(u\cdot\nabla)u=f, \\
+    & \frac{1}{\delta t}(u^+-\tilde{u}^+)+\nabla p=0, \\
+    & \nabla\cdot u^+=0
+  \end{split}
+\end{equation}
+We will be interested in the steady states which describes 
 a steady flow of the incompressible viscous Newtonian fluid 
 in a bounded domain $\Omega\subset\mr^d(d=2,3)$. 
-For more about details and convergence analysis of the 
-Stokes, Newton and Oseen methods, 
-we recommend readers refer to \cite{xu2013some,he2015stability}
-\cite[Chapter~6]{john2016finite}.
 

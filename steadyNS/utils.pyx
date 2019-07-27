@@ -2,7 +2,7 @@
 # cython: language_level=3
 
 cdef extern from "steadyNS.h":
-    int _CsrMulVec(const int M, const int nnz, 
+    int _CsrMulVec(const int M, const int N, const int nnz, 
             const int *IA, const int *JA, const double *data, 
             const double *x, double *y)
 
@@ -10,6 +10,11 @@ import numpy as np
 from scipy.sparse.linalg.interface import IdentityOperator
 
 def CG(A,b,x0=None,tol=1e-5,maxiter=20,M=None,callback=None):
+    """
+    use conjugate gradient methods to solve Ax=b, where initial value is x0. 
+    Iteration will stop at iteration limit 'maxiter' or relative tolerance condition ||A@xk-b||<tol*||b||. 
+    Solution x and iteration number will be returned.
+    """
     if x0 is None:
         x0 = np.zeros_like(b)
     x = x0
@@ -37,18 +42,18 @@ def CG(A,b,x0=None,tol=1e-5,maxiter=20,M=None,callback=None):
         alpha = rho/np.dot(p,w)
         x = x+alpha*p
         r = r-alpha*w
-    return x
+    return x,k
 
 def CsrMulVec(A,x):
-    y = np.zeros_like(x)
-    M = A.shape[0]
+    M,N = A.shape
+    y = np.zeros(M)
     nnz = A.nnz
-    assert(type(x)==np.ndarray and x.size==M)
+    assert(type(x)==np.ndarray and x.size==N)
     cdef int[::1] IA = A.indptr
     cdef int[::1] JA = A.indices
     cdef double[::1] data = A.data
     x = np.ascontiguousarray(x)
     cdef double[::1] xp = x
     cdef double[::1] yp = y
-    _CsrMulVec(M,nnz,&IA[0],&JA[0],&data[0],&xp[0],&yp[0])
+    _CsrMulVec(M,N,nnz,&IA[0],&JA[0],&data[0],&xp[0],&yp[0])
     return y

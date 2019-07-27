@@ -140,7 +140,7 @@ int CalculateTrGU(const int d, const int nQuad,
     return 0;
 }
 
-int _CsrMulVec(const int M, const int nnz, 
+int _CsrMulVec(const int M, const int N, const int nnz, 
         const int *IA, const int *JA, const double *data, 
         const double *x, double *y)
 {

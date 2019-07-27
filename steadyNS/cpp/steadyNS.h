@@ -19,38 +19,29 @@ extern "C" {
 int _switchEdgeNode(const int L, int *Edge);
 int _updateEdgeTags(const int d, const int N, const int NE, const int *Edge, 
         const int *B, const double *coord, int *Bedge);
-int _Poisson_countStiffMatData(const int d, const int M, const int N, const int NE,
-        const int *B, const int *ep);
-int _Poisson_StiffMatOO(const int C_NUM, const int d,
+
+int _P2StiffMatOO(const int C_NUM, const int d,
         const int M, const int N, const int NE, 
-        const int *B, const int *ep, 
-        const double *Ep, const double *eMeasure, 
+        const int *ep, const double *Ep, const double *eMeasure, 
         const int nQuad2, const double *W2, const double *Lambda2p, 
         int *I, int *J, double *data);
-int _countStiffMatUplusGU(const int d, const int M, const int N, const int NE, 
-        const int *B, const int *ep);
-int _countStiffMatUGUplus(const int d, const int M, const int N, const int NE, 
-        const int *B, const int *ep);
-int _StiffMatOO(const int d, const int M, const int N, const int NE, 
-        const int *B, const int *ep, const double *Ep, const double *eMeasure, 
-        const int nQuad1, const double *W1, const double *Lambda1p, 
+
+int _QGUOO(const int C_NUM, const int d, const int M, const int N, const int NE,
+        const int *ep, const double *Ep, const double *eMeasure,
+        const int nQuad2, const double *W2, const double *Lambda2p,
         int *I, int *J, double *data);
-int _UGU(const int C_NUM_UplusGU, const int C_NUM_UGUplus, 
-        const int d, const int M, const int N, const int NE, 
-        const int *B, const int *ep, const double *Ep, const double *eMeasure, 
+int _UGU(const int d, const int M, const int N, const int NE, 
+        const int *ep, const double *Ep, const double *eMeasure, 
         const int nQuad5, const double *W5, const double *Lambda5p, 
-        const double *Up, 
-        double *ugu, 
-        bool withUplusGU, int *IUplusGU, int *JUplusGU, double *dataUplusGU, 
-        bool withUGUplus, int *IUGUplus, int *JUGUplus, double *dataUGUplus);
-int _sourceF(const int d, const int M, const int N, const int NE, 
-        const int *B, const int *ep, const double *Ep, const double *eMeasure, 
+        const double *Up, double *ugu);
+int _sourceFOO(const int C_NUM, const int d, const int M, const int N, const int NE, 
+        const int *ep, const double *Ep, const double *eMeasure, 
         const int nQuad4, const double *W4, const double *Lambda4p, 
-        const double *Fp, double *rhi);
-int _CsrMulVec(const int M, const int nnz, 
+        int *I, int *J, double *data);
+
+int _CsrMulVec(const int M, const int N, const int nnz, 
         const int *IA, const int *JA, const double *data, 
         const double *x, double *y);
-
 int UpdateStiffMatTheta1Sum(const int d, const int D, const TensorAccessor<const double,2> &Ek,
         const int nQuad1, const double *W1, const TensorAccessor<const double,2> &Lambda1,
         TensorAccessor<double,2> &Theta1Sum);

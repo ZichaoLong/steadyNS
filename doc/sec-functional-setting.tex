@@ -10,22 +10,14 @@ respectively by
   \end{split}
   \]
 Moreover, we define the trilinear form
-\[b(u,v,w)=((u\cdot\nabla)v,w)+\frac{1}{2}((\nabla\cdot u)v,w)=
-\frac{1}{2}((u\cdot\nabla)v,w)-\frac{1}{2}((u\cdot\nabla)w,v),\forall u,v,w\in V.\]
-For a given $f\in L^2(\Omega)^d$, the variational formulation of problem \eqref{eq:Navier-Stokes} reads as: 
-find a pair $(u,p)\in(V,Q)$ such that 
-\begin{equation}\label{eq:variational-form}
-  a(u,v)+d(u,q)-d(v,p)+b(u,u,v)=(f,v),\forall (v,q)\in(V,Q).
-\end{equation}
-We denote the comforming finite element space pair as $(V_h,Q_h)$, 
-and define the iterative solution $(u^n_h,p^n_h)\in(V_h,Q_h)$ of Stokes iterative method such that
+\[b(u,v,w)=((u\cdot\nabla)v,w)\]
+For a given $f\in L^2(\Omega)^d$, the variational formulation of iterative method \eqref{eq:iter} reads as: 
+find a $(u^+,\tilde{u}^+,p)\in(V,V,Q)$ such that 
 \begin{equation}\label{eq:discrete-variational}
-  a(u_h^n,v)-d(v,p^n_h)+d(u_h^n,q)+b(u_h^{n-1},u_h^{n-1},v)=(f,v),\forall (v,q)\in(V_h,Q_h),
+  \begin{split}
+    & \frac{1}{\delta t}(\tilde{u}^+,v)+a(\tilde{u}^+,v)=-b(u,u,v)+(f,v)+\frac{1}{\delta t}(u,v), \forall v\in V \\
+    & \frac{1}{\delta t}(u^+,v)-(p,\nabla\cdot v)=\frac{1}{\delta t}(\tilde{u}^+,v), \forall v\in V\\ 
+    & (q,\nabla\cdot u^+) = 0, \forall q\in Q
+  \end{split}
 \end{equation}
-for $n=1,\cdots$. Some faster alternatives are Newton iterative and Ossen iterative:
-\begin{equation}\label{eq:newton-variational}
-  a(u_h^n,v)-d(v,p^n_h)+d(u_h^n,q)+b(u_h^{n},u_h^{n-1},v)+b(u_h^{n-1},u_h^{n},v)-b(u_h^{n-1},u_h^{n-1},v)=(f,v).
-\end{equation}
-\begin{equation}\label{eq:oseen-variation}
-  a(u_h^n,v)-d(v,p^n_h)+d(u_h^n,q)+b(u_h^{n-1},u_h^{n},v)=(f,v).
-\end{equation}
+We denote the comforming finite element space pair as $(V_h,Q_h)$.

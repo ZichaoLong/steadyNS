@@ -10,18 +10,15 @@ The data structure reads as follows:
 
   \item Node tag: $B=\{B_i:i=0,\cdots,N+NE-1\}$, which defines the physical information of $i$-th point of degree of freedom.
     \begin{description}
-      \item[-1] periodic source node
-      \item[0] interior node. We will merge periodic node and source node 
-        before construct edges in every element. 
-        So we set $B[i]=0, \forall i\geq N$
+      \item[0] interior node. 
       \item[1] inlet, where $u=(1,0,0)^\top$
       \item[2] outlet, where $u=(1,0,0)^\top$
-      \item[3] periodic node
-      \item[4] noslip wall, where $u=(0,0,0)^\top$. 
+      \item[3] Fix wall, where $u=(1,0,0)^\top$
+      \item[4] Hole boundary, where $u=(0,0,0)^\top$. 
         Velocity value $u$ on the surface of cylinders/spheres can be changed 
         if angular velocity $\omega\neq0$. Here we only consider flow past still cylinders/spheres.
     \end{description}
-    Only those nodes with tag $B_i=0$ or $B_i=-1$ have degrees of freedom.
+    Only those nodes with tag $B_i=0$ have degrees of freedom.
 
   \item Periodic points indices: $P=\{P_i\in\{-1,0,1,\cdots,N-1\}\}_{i=0}^{N}$.
     \[
