@@ -232,11 +232,13 @@ U,info = sp.sparse.linalg.cg(C,b,tol=1e-10,M=PoissonMM,callback=callback)
 U = steadyNS.poisson.EmbedU(N,NE,B,U)
 
 #%% show poisson solution
-# fig = plt.figure(figsize=(maxx//2+2,maxy//2))
+# dx = 0.1
+# uniformU = steadyNS.utils.InterpP2ToUniformGrid(dx,maxx,maxy,maxz,U,M,N,NE,e,coordAll)
+# selectzidx = int(maxz*0.5/dx)
+# fig = plt.figure()
 # ax = fig.add_subplot(111)
-# ax.tricontour(coordAll[:,0],coordAll[:,1],U,levels=30,linewidths=0.5,colors='k')
-# cntr = ax.tricontourf(coordAll[:,0],coordAll[:,1],U,levels=30,cmap="RdBu_r")
-# fig.colorbar(cntr,ax=ax)
+# colorPoisson = ax.imshow(uniformU[...,selectzidx].transpose(),cmap='jet')
+# fig.colorbar(colorPoisson,ax=ax)
 
 #%% set source F 
 CF = steadyNS.steadyNS.sourceF(d,M,N,NE,e,E,eMeasure)
