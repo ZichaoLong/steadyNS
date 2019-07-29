@@ -147,7 +147,7 @@ int _CsrMulVec(const int M, const int N, const int nnz,
 #pragma omp parallel for schedule(static)
     for (int i=0; i<M; ++i)
         y[i] = 0;
-#pragma omp parallel for schedule(guided)
+#pragma omp parallel for schedule(static)
     for (int i=0; i<M; ++i)
         for (int j=IA[i]; j<IA[i+1]; ++j)
             y[i] += data[j]*x[JA[j]];

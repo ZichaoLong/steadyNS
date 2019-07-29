@@ -13,8 +13,8 @@ libsteadyNS.a:ns-qgu.o ns-ugu.o utils.o ns-sourceF.o
 	ar cr libsteadyNS.a ns-qgu.o ns-ugu.o utils.o ns-sourceF.o
 libpoisson.a:poisson.o utils.o
 	ar cr libpoisson.a poisson.o utils.o
-libutils.a:utils.o
-	ar cr libutils.a utils.o
+libutils.a:utils.o interp2uniformgrid.o
+	ar cr libutils.a utils.o interp2uniformgrid.o
 
 .PHONY:clean
 clean:

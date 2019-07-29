@@ -219,14 +219,14 @@ from pyamg.aggregation import smoothed_aggregation_solver
 PoissonML = smoothed_aggregation_solver(C,symmetry='hermitian',strength='symmetric')
 PoissonMM = PoissonML.aspreconditioner(cycle='V')
 U = steadyNS.poisson.ReturnU(N,NE,B)
-URHIAdd_poisson = C_full@U
+URHIAdd_poisson = steadyNS.utils.CsrMulVec(C_full,U)
 URHIAdd_poisson = np.ascontiguousarray(URHIAdd_poisson[B==0])
 b = 0.001-URHIAdd_poisson
 k = 0
 def callback(xk):
     global k
     k += 1
-    return print("iter: ", k, "ResNorm: ", np.linalg.norm(C@xk-b))
+    return print("iter: ", k, "ResNorm: ", np.linalg.norm(steadyNS.utils.CsrMulVec(C,xk)-b))
 print("test poisson solver")
 U,info = sp.sparse.linalg.cg(C,b,tol=1e-10,M=PoissonMM,callback=callback)
 U = steadyNS.poisson.EmbedU(N,NE,B,U)
@@ -260,11 +260,11 @@ sys.stdout.flush()
 U = steadyNS.steadyNS.ReturnU(d,N,NE,B)
 URHIAdd = np.zeros_like(U)
 for l in range(d):
-    URHIAdd[l] = C_full@U[l]
+    URHIAdd[l] = steadyNS.utils.CsrMulVec(C_full,U[l])
 URHIAdd = np.ascontiguousarray(URHIAdd[:,B==0])
 PRHIAdd = np.zeros(N)
 for l in range(d):
-    PRHIAdd += C0_full[l]@U[l]
+    PRHIAdd += steadyNS.utils.CsrMulVec(C0_full[l],U[l])
 
 #%% pressure correction method step 0: set linear system
 PrintInfo = False
@@ -290,7 +290,7 @@ def STEP0(U0,tol=1e-10):
         global k
         k += 1
         if PrintInfo:
-            print("iter: ", k, "ResNorm: ", np.linalg.norm(STEP0LinearSystemOP@xk-b))
+            print("iter: ", k, " ResNorm: ", np.linalg.norm(STEP0LinearSystemOP@xk-b))
         return 
     Utilde = np.zeros((d,DN))
     tmp = 0
@@ -303,7 +303,7 @@ def STEP0(U0,tol=1e-10):
                 M=STEP0MM, callback=callback)
         tmp +=  np.linalg.norm(STEP0LinearSystemOP@Utilde[l]-STEP0rhi[l])
         iternum += iternumtmp
-    print("STEP0 IterNum: ", iternum, "Precision: {:.2e}".format(tmp))
+    print("STEP0 IterNum: ", iternum, " Precision: {:.2e}".format(tmp))
     return Utilde
 
 #%% pressure correction method step 1: set linear system
@@ -344,12 +344,12 @@ def STEP1(Utilde,P0=None,tol=1e-10):
         global k
         k += 1
         if PrintInfo:
-            print("iter: ", k, "ResNorm: ", np.linalg.norm(PLinearSystem@xk-Prhi))
+            print("iter: ", k, " ResNorm: ", np.linalg.norm(PLinearSystem@xk-Prhi))
         return 
     k = 0
     P0 = (np.zeros_like(Prhi) if P0 is None else P0)
     P,iternum = steadyNS.utils.CG(PLinearSystem,Prhi,x0=P0,tol=tol,maxiter=50,M=PrePLinearSystemMM,callback=callback)
-    print("STEP1 IterNum: ", iternum, "Precision: {:.2e}".format(np.linalg.norm(PLinearSystem@P-Prhi)))
+    print("STEP1 IterNum: ", iternum, " Precision: {:.2e}".format(np.linalg.norm(PLinearSystem@P-Prhi)))
     for l in range(d):
         U[l] += dt*CFSolver(steadyNS.utils.CsrMulVec(C0transpose[l],P))
     return U,P
@@ -369,6 +369,7 @@ U0 = np.zeros((d,DN))
 ALLCONVERGE = []
 tol = 1e-5
 PrintInfo = False
+TotalStartTime = time.time()
 startt = time.time()
 for steps in range(2000):
     Utilde = STEP0(U0,tol=tol)
@@ -377,15 +378,15 @@ for steps in range(2000):
     else:
         U1,P = STEP1(Utilde,tol=tol,P0=P)
     CONVERGE = np.abs(U1-U0).max()/dt
-    if CONVERGE<1e-3:
+    if CONVERGE<3e-4:
         tol = 1e-10
     ALLCONVERGE.append(CONVERGE)
     DIVERGENCENORM = PRHIAdd
     for l in range(d):
-        DIVERGENCENORM = DIVERGENCENORM+C0[l]@U1[l]
+        DIVERGENCENORM = DIVERGENCENORM+steadyNS.utils.CsrMulVec(C0[l],U1[l])
     DIVERGENCENORM = np.linalg.norm(DIVERGENCENORM)
-    print("ITER: ", steps, "ElapsedTime: {:.2e}".format(time.time()-startt), 
-            "div U1: {:.2e}".format(DIVERGENCENORM), "max(|U1-U0|/dt): {:.2e}".format(CONVERGE))
+    print("ITER: ", steps, " ElapsedTime: {:.2e}".format(time.time()-startt), 
+            " div U1: {:.2e}".format(DIVERGENCENORM), " max(|U1-U0|/dt): {:.2e}".format(CONVERGE))
     sys.stdout.flush()
     startt = time.time()
     U0 = U1
@@ -393,8 +394,29 @@ for steps in range(2000):
         break
     if CONVERGE>1e5:
         break
+print("ITER: ", steps, " Total Elapsed Time: {:.2e}".format(time.time()-TotalStartTime))
 U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U1)
 
+#%% interp to uniform grid
+dx = 0.1
+uniformU = []
+for l in range(d):
+    uniformU.append(steadyNS.utils.InterpP2ToUniformGrid(dx,maxx,maxy,maxz,U[l],M,N,NE,e,coordAll))
+uniformP = steadyNS.utils.InterpP1ToUniformGrid(dx,maxx,maxy,maxz,P,M,N,NE,e,coordAll)
+selectzidx = int(maxz*0.5/dx)
+fig = plt.figure()
+ax1 = fig.add_subplot(4,1,1)
+coloru = ax1.imshow(uniformU[0][...,selectzidx].transpose(),cmap='jet')
+ax2 = fig.add_subplot(4,1,2)
+colorv = ax2.imshow(uniformU[1][...,selectzidx].transpose(),cmap='jet')
+ax3 = fig.add_subplot(4,1,3)
+colorw = ax3.imshow(uniformU[2][...,selectzidx].transpose(),cmap='jet')
+ax4 = fig.add_subplot(4,1,4)
+colorp = ax4.imshow(uniformP[...,selectzidx].transpose(),cmap='jet')
+fig.colorbar(coloru,ax=ax1)
+fig.colorbar(colorv,ax=ax2)
+fig.colorbar(colorw,ax=ax3)
+fig.colorbar(colorp,ax=ax4)
 #%%
 if len(sys.argv)<=1:
     gmsh.fltk.run()

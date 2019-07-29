@@ -5,6 +5,16 @@ cdef extern from "steadyNS.h":
     int _CsrMulVec(const int M, const int N, const int nnz, 
             const int *IA, const int *JA, const double *data, 
             const double *x, double *y)
+    int _InterpP2ToUniformGrid(const double dx,
+            const int xidxrange, const int yidxrange, const int zidxrange,
+            const int M, const int N, const int NE,
+            const int *ep , const double *basisp, const double *coordAllp,
+            const double *Up, double *uniformUp)
+    int _InterpP1ToUniformGrid(const double dx,
+            const int xidxrange, const int yidxrange, const int zidxrange,
+            const int M, const int N, const int NE,
+            const int *ep , const double *basisp, const double *coordAllp,
+            const double *Pp, double *uniformPp)
 
 import numpy as np
 from scipy.sparse.linalg.interface import IdentityOperator
@@ -57,3 +67,55 @@ def CsrMulVec(A,x):
     cdef double[::1] yp = y
     _CsrMulVec(M,N,nnz,&IA[0],&JA[0],&data[0],&xp[0],&yp[0])
     return y
+
+def BarycentricBasis(d,M,e,coord):
+    E = np.empty((M,d+1,d+1),dtype=float)
+    E[:,0,:] = 1
+    for i in range(d+1):
+        E[:,1:,i] = coord[e[:,i]]
+    E = np.linalg.inv(E)
+    return E
+
+def InterpP2ToUniformGrid(dx,maxx,maxy,maxz,U0,M,N,NE,e,coordAll):
+    """
+    Interpolation from P2 finite element to uniform grid
+    This function is only for 3d case
+    """
+    e = np.ascontiguousarray(e)
+    cdef int[::1] e_memview = e.reshape(-1)
+    E = BarycentricBasis(3,M,e,coordAll)
+    cdef double[::1] E_memview = E.reshape(-1)
+    coordAll = np.ascontiguousarray(coordAll)
+    cdef double[::1] coordAll_memview = coordAll.reshape(-1)
+    U = np.ascontiguousarray(U0)
+    cdef double[::1] U_memview = U.reshape(-1)
+    xidxrange,yidxrange,zidxrange = \
+            int(np.floor(maxx/dx)),int(np.floor(maxy/dx)),int(np.floor(maxz/dx))
+    uniformU = np.zeros((xidxrange,yidxrange,zidxrange))
+    cdef double[::1] uniformU_memview = uniformU.reshape(-1)
+    _InterpP2ToUniformGrid(dx,xidxrange,yidxrange,zidxrange,
+            M,N,NE,&e_memview[0],&E_memview[0],&coordAll_memview[0],
+            &U_memview[0],&uniformU_memview[0])
+    return uniformU
+
+def InterpP1ToUniformGrid(dx,maxx,maxy,maxz,P0,M,N,NE,e,coordAll):
+    """
+    Interpolation from P1 finite element to uniform grid
+    This function is only for 3d case
+    """
+    e = np.ascontiguousarray(e)
+    cdef int[::1] e_memview = e.reshape(-1)
+    E = BarycentricBasis(3,M,e,coordAll)
+    cdef double[::1] E_memview = E.reshape(-1)
+    coordAll = np.ascontiguousarray(coordAll)
+    cdef double[::1] coordAll_memview = coordAll.reshape(-1)
+    P = np.ascontiguousarray(P0)
+    cdef double[::1] P_memview = P.reshape(-1)
+    xidxrange,yidxrange,zidxrange = \
+            int(np.floor(maxx/dx)),int(np.floor(maxy/dx)),int(np.floor(maxz/dx))
+    uniformP = np.zeros((xidxrange,yidxrange,zidxrange))
+    cdef double[::1] uniformP_memview = uniformP.reshape(-1)
+    _InterpP1ToUniformGrid(dx,xidxrange,yidxrange,zidxrange,
+            M,N,NE,&e_memview[0],&E_memview[0],&coordAll_memview[0],
+            &P_memview[0],&uniformP_memview[0])
+    return uniformP

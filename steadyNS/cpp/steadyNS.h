@@ -70,6 +70,17 @@ int CalculateTrGU(const int d, const int nQuad,
         const TensorAccessor<const double,3> &GU, 
         TensorAccessor<double,1> &TrGU);
 
+int _InterpP2ToUniformGrid(const double dx,
+        const int xidxrange, const int yidxrange, const int zidxrange,
+        const int M, const int N, const int NE,
+        const int *ep , const double *basisp, const double *coordAllp,
+        const double *Up, double *uniformUp);
+int _InterpP1ToUniformGrid(const double dx,
+        const int xidxrange, const int yidxrange, const int zidxrange,
+        const int M, const int N, const int NE,
+        const int *ep , const double *basisp, const double *coordAllp,
+        const double *Pp, double *uniformPp);
+
 #ifdef __cplusplus
 }
 #endif
