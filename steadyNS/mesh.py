@@ -92,3 +92,26 @@ def P1Check(coord,B,e,Cylinders,maxx=16):
         BCtmp = BCtmp<1e-10
         BC = BC | BCtmp
     print(np.linalg.norm(coord[BC]-coord[B==4]))
+
+def SetHoleTags(coord,B,e,Holes):
+    """
+    set P1 node tags on different holes,
+    this function should be called before P2Elements
+    """
+    M = e.shape[0]
+    d = e.shape[1]-1
+    N = B.shape[0]
+    idx = np.where(B==4)[0]
+    idxForEachHole = []
+    for hole in Holes:
+        if d==2:
+            BCtmp = (coord[idx,0]-hole['x'])**2+(coord[idx,1]-hole['y'])**2
+        elif d==3:
+            BCtmp = (coord[idx,0]-hole['x'])**2+(coord[idx,1]-hole['y'])**2+(coord[idx,2]-hole['z'])**2
+        BCtmp -= (hole['d']/2)**2
+        idxForEachHole.append(idx[BCtmp<1e-10])
+    assert(sum(len(x) for x in idxForEachHole)==len(idx))
+    for k in range(len(idxForEachHole)):
+        B[idxForEachHole[k]] = 4+k
+    return B
+

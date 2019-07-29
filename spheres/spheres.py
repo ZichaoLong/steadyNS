@@ -179,6 +179,7 @@ B[B==PhysicalOutlet] = 0
 M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, ComputationDomainTag, coord, B)
 
 steadyNS.mesh.P1Check(coord,B,e,Spheres,maxx)
+B = steadyNS.mesh.SetHoleTags(coord,B,e,Spheres)
 
 NE,B,e,Edge = steadyNS.mesh.P2Elements(d, B, e, coord)
 coordEdge = (coord[Edge[:,0]]+coord[Edge[:,1]])/2

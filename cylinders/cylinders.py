@@ -1,5 +1,5 @@
 """
-python cylinders.py caseName clscale x1 y1 r1 x2 y2 r2 ...
+python cylinders.py caseName lcar1 lcar2 x1 y1 r1 x2 y2 r2 ...
 """
 #%%
 import gmsh
@@ -12,20 +12,29 @@ import time
 import steadyNS
 import matplotlib.pyplot as plt
 
-nu = 0.1
 d = 2;
 maxx = 24;
 maxy = 8;
-lcar1 = 0.4;
+
+caseName = "cylinders"
+nu = 0.1
+dt = 0.1
+lcar1 = 0.3;
 lcar2 = 0.2;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
-else:
-    caseName = "cylinders"
 if len(sys.argv[2:])>=1:
-    lcar1 *= float(sys.argv[2])
-    lcar2 *= float(sys.argv[2])
-argv = sys.argv[3:]
+    nu = float(sys.argv[2])
+if len(sys.argv[3:])>=1:
+    dt = float(sys.argv[3])
+if len(sys.argv[4:])>=1:
+    lcar1 = float(sys.argv[4])
+if len(sys.argv[5:])>=1:
+    lcar2 = float(sys.argv[5])
+argv = sys.argv[6:]
+print("case name: ", caseName)
+print("nu: ", nu)
+print("dt: ", dt)
 print("characteristic length scale of")
 print("box boundary "+str(lcar1))
 print("cylinder boundary "+str(lcar2))
@@ -146,6 +155,7 @@ B[B==PhysicalOutletNodes] = 0
 M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, WholeDomainTag, coord, B)
 
 steadyNS.mesh.P1Check(coord,B,e,Cylinders,maxx)
+B = steadyNS.mesh.SetHoleTags(coord,B,e,Cylinders)
 
 NE,B,e,Edge = steadyNS.mesh.P2Elements(d, B, e, coord)
 coordEdge = (coord[Edge[:,0]]+coord[Edge[:,1]])/2
@@ -227,8 +237,6 @@ for l in range(d):
     PRHIAdd += C0_full[l]@U[l]
 
 #%% pressure correction method step 0: set linear system
-dt = 0.1
-nu = nu
 PrintInfo = False
 # BigC = nu*sp.sparse.bmat([[C,None],[None,C]])
 # solveBigStokes = sp.sparse.linalg.splu(BigStokes).solve
@@ -239,7 +247,7 @@ STEP0MM = STEP0ML.aspreconditioner(cycle='V')
 STEP0LinearSystemOPFUNC = lambda x:steadyNS.utils.CsrMulVec(STEP0LinearSystem, x)
 STEP0LinearSystemOP = sp.sparse.linalg.LinearOperator(shape=STEP0LinearSystem.shape,
         matvec=STEP0LinearSystemOPFUNC, rmatvec=STEP0LinearSystemOPFUNC)
-def STEP0(U0):
+def STEP0(U0,tol=1e-10):
     global k
     U0 = U0.reshape(d,DN)
     ugu = steadyNS.steadyNS.UGU(steadyNS.steadyNS.EmbedU(d,N,NE,B,U0),
@@ -261,11 +269,11 @@ def STEP0(U0):
         k = 0
         b = STEP0rhi[l]
         Utilde[l],iternumtmp = steadyNS.utils.CG(STEP0LinearSystemOP, b, 
-                x0=U0[l], tol=1e-10, maxiter=50, 
+                x0=U0[l], tol=tol, maxiter=50, 
                 M=STEP0MM, callback=callback)
         tmp +=  np.linalg.norm(STEP0LinearSystemOP@Utilde[l]-STEP0rhi[l])
         iternum += iternumtmp
-    print("STEP0 IterNum: ", iternum, "Precision: ", tmp)
+    print("STEP0 IterNum: ", iternum, " Precision: {:.2e}".format(tmp))
     return Utilde
 
 #%% pressure correction method step 1: set linear system
@@ -294,7 +302,7 @@ for l in range(d):
     PrePLinearSystem = PrePLinearSystem+C0[l]@(diagCF@C0[l].transpose())
 PrePLinearSystemML = smoothed_aggregation_solver(PrePLinearSystem,symmetry='hermitian',strength='symmetric')
 PrePLinearSystemMM = PrePLinearSystemML.aspreconditioner(cycle='V')
-def STEP1(Utilde,P0=None):
+def STEP1(Utilde,P0=None,tol=1e-10):
     global k
     U = Utilde.copy().reshape(d,DN)
     Prhi = 0
@@ -306,11 +314,11 @@ def STEP1(Utilde,P0=None):
         global k
         k += 1
         if PrintInfo:
-            print("iter: ", k, "ResNorm: ", np.linalg.norm(PLinearSystem@xk-Prhi))
+            print("iter: ", k, " ResNorm: ", np.linalg.norm(PLinearSystem@xk-Prhi))
         return 
     k = 0
     P0 = (np.zeros_like(Prhi) if P0 is None else P0)
-    P,iternum = steadyNS.utils.CG(PLinearSystem,Prhi,x0=P0,tol=1e-10,maxiter=50,M=PrePLinearSystemMM,callback=callback)
+    P,iternum = steadyNS.utils.CG(PLinearSystem,Prhi,x0=P0,tol=tol,maxiter=50,M=PrePLinearSystemMM,callback=callback)
     print("STEP1 IterNum: ", iternum, "Precision: ", np.linalg.norm(PLinearSystem@P-Prhi))
     for l in range(d):
         U[l] += dt*CFSolver(steadyNS.utils.CsrMulVec(C0transpose[l],P))
@@ -329,15 +337,18 @@ print("step1 elapsed time: ", time.time()-startt)
 #%% pressure correction method
 U0 = np.zeros((d,DN))
 ALLCONVERGE = []
+tol = 1e-5
 PrintInfo = False
 startt = time.time()
 for steps in range(2000):
-    Utilde = STEP0(U0)
+    Utilde = STEP0(U0,tol=tol)
     if steps==0:
-        U1,P = STEP1(Utilde)
+        U1,P = STEP1(Utilde,tol=tol)
     else:
-        U1,P = STEP1(Utilde,P)
+        U1,P = STEP1(Utilde,P0=P,tol=tol)
     CONVERGE = np.abs(U1-U0).max()/dt
+    if CONVERGE<3e-4:
+        tol = 1e-10
     ALLCONVERGE.append(CONVERGE)
     DIVERGENCENORM = PRHIAdd
     for l in range(d):
@@ -381,7 +392,8 @@ fig.colorbar(cntr,ax=ax)
 ax.plot(coordAll[B==1,0],coordAll[B==1,1],'ko', ms=5)
 ax.plot(coordAll[B==2,0],coordAll[B==2,1],'k>', ms=5)
 ax.plot(coordAll[B==3,0],coordAll[B==3,1],'kx', ms=5)
-ax.plot(coordAll[B==4,0],coordAll[B==4,1],'kD', ms=2)
+ax.plot(coordAll[B==4,0],coordAll[B==4,1],'rD', ms=2)
+ax.plot(coordAll[B==5,0],coordAll[B==5,1],'bD', ms=2)
 # pressure
 fig = plt.figure(figsize=(10,8))
 ax = fig.add_subplot(111)
