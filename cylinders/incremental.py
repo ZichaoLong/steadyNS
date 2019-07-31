@@ -248,20 +248,27 @@ PrintInfo = False
 # BigC = nu*sp.sparse.bmat([[C,None],[None,C]])
 # solveBigStokes = sp.sparse.linalg.splu(BigStokes).solve
 
-STEP0LinearSystem = (CF/dt+nu*C).tocsr()
+STEP0LinearSystem = (1.5/dt*CF+nu*C).tocsr()
 STEP0ML = smoothed_aggregation_solver(STEP0LinearSystem,symmetry='hermitian',strength='symmetric')
 STEP0MM = STEP0ML.aspreconditioner(cycle='V')
 STEP0LinearSystemOPFUNC = lambda x:steadyNS.utils.CsrMulVec(STEP0LinearSystem, x)
 STEP0LinearSystemOP = sp.sparse.linalg.LinearOperator(shape=STEP0LinearSystem.shape,
         matvec=STEP0LinearSystemOPFUNC, rmatvec=STEP0LinearSystemOPFUNC)
-def STEP0(U0,tol=1e-10):
+def STEP0(U0,Uminus1,P0=None,tol=1e-10):
     global k
     U0 = U0.reshape(d,DN)
+    Uminus1 = Uminus1.reshape(d,DN)
+    if P0 is None:
+        P0 = np.zeros(N)
+    GradP0 = np.zeros((d,N+NE))
+    for l in range(d):
+        GradP0[l] = -steadyNS.utils.CsrMulVec(C0_full[l].transpose().tocsr(),P0)
+    STEP0rhi = -GradP0[:,B==0]
     ugu = steadyNS.steadyNS.UGU(steadyNS.steadyNS.EmbedU(d,N,NE,B,U0),
             d,M,N,NE,e,E,eMeasure)
-    STEP0rhi = -ugu[:,B==0]
+    STEP0rhi -= ugu[:,B==0]
     for l in range(d):
-        STEP0rhi[l] += steadyNS.utils.CsrMulVec(CF, U0[l]/dt)
+        STEP0rhi[l] += steadyNS.utils.CsrMulVec(CF, (2*U0[l]-Uminus1[l]*0.5)/dt)
     STEP0rhi -= nu*URHIAdd
     def callback(xk):
         global k
@@ -293,8 +300,10 @@ CFOP = sp.sparse.linalg.LinearOperator(shape=CF.shape,
 diagCFOPFUNC = lambda x:steadyNS.utils.CsrMulVec(diagCF,x)
 diagCFOP = sp.sparse.linalg.LinearOperator(shape=diagCF.shape,
         matvec=diagCFOPFUNC, rmatvec=diagCFOPFUNC)
-CFSolver = lambda x: steadyNS.utils.CG(CFOP, x, 
-        tol=1e-10, maxiter=50, M=diagCFOP)[0]
+def CFSolver(b, x0=None, tol=1e-12):
+    return steadyNS.utils.CG(CFOP,b,x0=x0,tol=tol,maxiter=50,M=diagCFOP)[0]
+# CFSolver = lambda x: steadyNS.utils.CG(CFOP, x, 
+#         tol=1e-10, maxiter=50, M=diagCFOP)[0]
 C0transpose = list(C0[l].transpose().tocsr() for l in range(d))
 def PLinearSystemOP(x):
     y = np.zeros_like(x)
@@ -312,11 +321,16 @@ PrePLinearSystemMM = PrePLinearSystemML.aspreconditioner(cycle='V')
 def STEP1(Utilde,P0=None,tol=1e-10):
     global k
     U = Utilde.copy().reshape(d,DN)
+    P0 = (np.zeros_like(Prhi) if P0 is None else P0)
+    r = np.zeros_like(U)
+    GradP0 = np.zeros_like(U)
+    for l in range(d):
+        GradP0[l] = steadyNS.utils.CsrMulVec(C0transpose[l],P0)
     Prhi = 0
     for l in range(d):
-        Prhi = Prhi-steadyNS.utils.CsrMulVec(C0[l],U[l])
-    Prhi -= PRHIAdd
-    Prhi *= 1/dt
+        Prhi = Prhi-steadyNS.utils.CsrMulVec(C0[l],
+                    Utilde[l]/(2*dt/3)-CFSolver(GradP0[l]))
+    Prhi -= PRHIAdd/(2*dt/3)
     def callback(xk):
         global k
         k += 1
@@ -324,57 +338,65 @@ def STEP1(Utilde,P0=None,tol=1e-10):
             print("iter: ", k, " ResNorm: ", np.linalg.norm(PLinearSystem@xk-Prhi))
         return 
     k = 0
-    P0 = (np.zeros_like(Prhi) if P0 is None else P0)
     P,iternum = steadyNS.utils.CG(PLinearSystem,Prhi,x0=P0,tol=tol,maxiter=50,M=PrePLinearSystemMM,callback=callback)
     print("STEP1 IterNum: ", iternum, "Precision: ", np.linalg.norm(PLinearSystem@P-Prhi))
     for l in range(d):
-        U[l] += dt*CFSolver(steadyNS.utils.CsrMulVec(C0transpose[l],P))
+        U[l] += (2*dt/3)*CFSolver(steadyNS.utils.CsrMulVec(C0transpose[l],P)-GradP0[l])
     return U,P
 
 #%% test pressure correction method step0, step1
-PrintInfo = True
+Uminus1 = np.zeros((d,DN))
 U0 = np.zeros((d,DN))
+P0 = np.zeros(N)
+PrintInfo = True
 startt = time.time()
-Utilde = STEP0(U0)
+Utilde = STEP0(U0,Uminus1,P0=P0)
 print("step0 elapsed time: ", time.time()-startt)
 startt = time.time()
-U1,P = STEP1(Utilde)
+U1,P1 = STEP1(Utilde,P0=P0)
 print("step1 elapsed time: ", time.time()-startt)
 
 #%% pressure correction method
+Uminus1 = np.zeros((d,DN))
 U0 = np.zeros((d,DN))
-ALLCONVERGE = []
+P0 = np.zeros(N)
+ALLCONVERGE = {'RHI':[],'P':[],'U':[]}
 tol = 1e-5
 PrintInfo = False
 startt = time.time()
 for steps in range(2000):
-    Utilde = STEP0(U0,tol=tol)
-    if steps==0:
-        U1,P = STEP1(Utilde,tol=tol)
-    else:
-        U1,P = STEP1(Utilde,P0=P,tol=tol)
-    CONVERGE = np.abs(U1-U0).max()/dt
-    if CONVERGE<3e-4:
+    Utilde = STEP0(U0,Uminus1,P0=P0,tol=tol)
+    U1,P1 = STEP1(Utilde,P0=P0,tol=tol)
+    RHICONVERGE = np.abs(Utilde-U0).max()/dt
+    PCONVERGE = np.abs(P1-P0).max()/dt
+    UCONVERGE = np.abs(U1-U0).max()/dt
+    if min(RHICONVERGE,PCONVERGE,UCONVERGE)<3e-4:
         tol = min(tol,1e-10)
-    ALLCONVERGE.append(CONVERGE)
+    ALLCONVERGE['RHI'].append(RHICONVERGE)
+    ALLCONVERGE['P'].append(PCONVERGE)
+    ALLCONVERGE['U'].append(UCONVERGE)
     DIVERGENCENORM = PRHIAdd
     for l in range(d):
-        DIVERGENCENORM = DIVERGENCENORM+C0[l]@U1[l]
+        DIVERGENCENORM = DIVERGENCENORM+steadyNS.utils.CsrMulVec(C0[l],U1[l])
     DIVERGENCENORM = np.linalg.norm(DIVERGENCENORM)
-    print("ITER: ", steps, "div U1: {:.2e}".format(DIVERGENCENORM), "max(|U1-U0|/dt): {:.2e}".format(CONVERGE))
+    print("ITER: ", steps, "div U1: {:.2e}".format(DIVERGENCENORM), "CONVERGE: ")
+    print("         RHI: {:.2e}  P: {:.2e}  U: {:.2e}".format(RHICONVERGE,PCONVERGE,UCONVERGE))
+    Uminus1 = U0
     U0 = U1
-    if CONVERGE<1e-5:
+    P0 = P1
+    if max(RHICONVERGE,PCONVERGE,UCONVERGE)<1e-5:
         break
 print("elapsed time: ", time.time()-startt)
 U = steadyNS.steadyNS.EmbedU(d,N,NE,B,U1)
+P = P1
 
-Utilde = STEP0(U0,tol=tol)
-U1,P = STEP1(Utilde,P0=P,tol=tol)
+Utilde = STEP0(U0,Uminus1,P0=P0,tol=tol)
+U1,P1 = STEP1(Utilde,P0=P0,tol=tol)
 VelocityForce,PressureForce = steadyNS.steadyNS.force(
         len(Cylinders),nu,dt,d,M,N,NE,e,E,eMeasure,
         B_full,C_full,C0_full,CF_full,
         U1_full=steadyNS.steadyNS.EmbedU(d,N,NE,B,U1),
-        U0_full=steadyNS.steadyNS.EmbedU(d,N,NE,B,U0),P=P)
+        U0_full=steadyNS.steadyNS.EmbedU(d,N,NE,B,U0),P=P1)
 print("case name: ", caseName)
 print("Re: ", Re)
 print("dt: ", dt)
@@ -389,7 +411,9 @@ print("PressureForce: \n", PressureForce)
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.set_yscale('log')
-ax.plot(ALLCONVERGE)
+ax.plot(ALLCONVERGE['RHI'],'k')
+ax.plot(ALLCONVERGE['P'],'b')
+ax.plot(ALLCONVERGE['U'],'r')
 # quiver
 fig = plt.figure(figsize=(maxx//2,maxy//2))
 ax = fig.add_subplot(111)

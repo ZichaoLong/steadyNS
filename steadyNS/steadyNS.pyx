@@ -4,8 +4,11 @@
 import numpy as np
 import scipy as sp
 import scipy.sparse
+import pyamg
+from pyamg.aggregation import smoothed_aggregation_solver
 from . import QuadPts
 from . import poisson
+from . import utils
 
 def ReturnU(d,N,NE,B):
     U = np.zeros((d,N+NE))
@@ -95,4 +98,23 @@ def QGU(d,M,N,NE,e,E,eMeasure):
     for l in range(d):
         C[l] = C[l].tocsr()
     return C
+
+def force(HoleNum,nu,dt,d,M,N,NE,e,E,eMeasure,
+        B_full,C_full,C0_full,CF_full,
+        U1_full,U0_full,P):
+    U_t = (U1_full-U0_full)/dt
+    ugu = UGU(U0_full,d,M,N,NE,e,E,eMeasure)
+    GradP = np.zeros_like(U1_full)
+    for l in range(d):
+        GradP[l] = utils.CsrMulVec(C0_full[l].transpose().tocsr(),P)
+    VelocityForce = np.zeros((HoleNum,d))
+    PressureForce = np.zeros((HoleNum,d))
+    for l in range(d):
+        tmp = utils.CsrMulVec(CF_full,U_t[l])
+        tmp += utils.CsrMulVec(C_full,U1_full[l])*nu
+        tmp += ugu[l]
+        for k in range(HoleNum):
+            VelocityForce[k,l] -= tmp[B_full==4+k].sum()
+            PressureForce[k,l] += GradP[l][B_full==4+k].sum()
+    return VelocityForce,PressureForce
 

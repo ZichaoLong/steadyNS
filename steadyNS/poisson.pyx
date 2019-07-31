@@ -36,9 +36,7 @@ def P2StiffMat(d,M,N,NE,e,E,eMeasure):
 
 def ReturnU(N,NE,B):
     U = np.zeros(N+NE)
-    U[B==1] = 1
-    U[B==2] = 1
-    U[B==3] = 1
+    U[B==4] = 1
     return U
 
 def EmbedU(N,NE,B,U0):

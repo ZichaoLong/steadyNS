@@ -1,5 +1,5 @@
 """
-python spheres.py caseName nu dt lcar1 lcar2 x1 y1 r1 x2 y2 r2 ...
+python spheres.py caseName Re dt lcar1 lcar2 x1 y1 r1 x2 y2 r2 ...
 """
 #%%
 import gmsh
@@ -18,14 +18,16 @@ maxy = 8;
 maxz = 8;
 
 caseName = "spheres"
-nu = 0.1
+Re = 10
+nu = 1/Re
 dt = 0.2
 lcar1 = 0.3;
 lcar2 = 0.2;
 if len(sys.argv[1:])>=1:
     caseName = sys.argv[1]
 if len(sys.argv[2:])>=1:
-    nu = float(sys.argv[2])
+    Re = float(sys.argv[2])
+    nu = 1/Re
 if len(sys.argv[3:])>=1:
     dt = float(sys.argv[3])
 if len(sys.argv[4:])>=1:
@@ -173,7 +175,6 @@ model.mesh.generate(3)
 N,coord,B = steadyNS.mesh.P1Nodes(d, 
         PhysicalWholeDomain, PhysicalInlet, PhysicalOutlet, PhysicalFixWall, 
         PhysicalHoleBoundary)
-B[B==PhysicalOutlet] = 0
 
 #%% set elements
 M,e,E,eMeasure = steadyNS.mesh.P1Elements(d, ComputationDomainTag, coord, B)
@@ -182,6 +183,9 @@ steadyNS.mesh.P1Check(coord,B,e,Spheres,maxx)
 B = steadyNS.mesh.SetHoleTags(coord,B,e,Spheres)
 
 NE,B,e,Edge = steadyNS.mesh.P2Elements(d, B, e, coord)
+B_full = B.copy()
+B[B==PhysicalOutlet] = 0
+
 coordEdge = (coord[Edge[:,0]]+coord[Edge[:,1]])/2
 coordAll = np.concatenate([coord,coordEdge],axis=0)
 coordEle = np.zeros((M,3))
