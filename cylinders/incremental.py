@@ -254,16 +254,17 @@ STEP0MM = STEP0ML.aspreconditioner(cycle='V')
 STEP0LinearSystemOPFUNC = lambda x:steadyNS.utils.CsrMulVec(STEP0LinearSystem, x)
 STEP0LinearSystemOP = sp.sparse.linalg.LinearOperator(shape=STEP0LinearSystem.shape,
         matvec=STEP0LinearSystemOPFUNC, rmatvec=STEP0LinearSystemOPFUNC)
+C0transpose = list(C0[l].transpose().tocsr() for l in range(d))
 def STEP0(U0,Uminus1,P0=None,tol=1e-10):
     global k
     U0 = U0.reshape(d,DN)
     Uminus1 = Uminus1.reshape(d,DN)
     if P0 is None:
         P0 = np.zeros(N)
-    GradP0 = np.zeros((d,N+NE))
+    GradP0 = np.zeros((d,DN))
     for l in range(d):
-        GradP0[l] = -steadyNS.utils.CsrMulVec(C0_full[l].transpose().tocsr(),P0)
-    STEP0rhi = -GradP0[:,B==0]
+        GradP0[l] = -steadyNS.utils.CsrMulVec(C0transpose[l],P0)
+    STEP0rhi = -GradP0
     ugu = steadyNS.steadyNS.UGU(steadyNS.steadyNS.EmbedU(d,N,NE,B,U0),
             d,M,N,NE,e,E,eMeasure)
     STEP0rhi -= ugu[:,B==0]
@@ -304,7 +305,6 @@ def CFSolver(b, x0=None, tol=1e-12):
     return steadyNS.utils.CG(CFOP,b,x0=x0,tol=tol,maxiter=50,M=diagCFOP)[0]
 # CFSolver = lambda x: steadyNS.utils.CG(CFOP, x, 
 #         tol=1e-10, maxiter=50, M=diagCFOP)[0]
-C0transpose = list(C0[l].transpose().tocsr() for l in range(d))
 def PLinearSystemOP(x):
     y = np.zeros_like(x)
     for l in range(d):
@@ -321,15 +321,15 @@ PrePLinearSystemMM = PrePLinearSystemML.aspreconditioner(cycle='V')
 def STEP1(Utilde,P0=None,tol=1e-10):
     global k
     U = Utilde.copy().reshape(d,DN)
-    P0 = (np.zeros_like(Prhi) if P0 is None else P0)
+    P0 = (np.zeros(N) if P0 is None else P0)
     r = np.zeros_like(U)
     GradP0 = np.zeros_like(U)
     for l in range(d):
-        GradP0[l] = steadyNS.utils.CsrMulVec(C0transpose[l],P0)
+        GradP0[l] = -steadyNS.utils.CsrMulVec(C0transpose[l],P0)
     Prhi = 0
     for l in range(d):
         Prhi = Prhi-steadyNS.utils.CsrMulVec(C0[l],
-                    Utilde[l]/(2*dt/3)-CFSolver(GradP0[l]))
+                    Utilde[l]/(2*dt/3)+CFSolver(GradP0[l]))
     Prhi -= PRHIAdd/(2*dt/3)
     def callback(xk):
         global k
@@ -341,7 +341,7 @@ def STEP1(Utilde,P0=None,tol=1e-10):
     P,iternum = steadyNS.utils.CG(PLinearSystem,Prhi,x0=P0,tol=tol,maxiter=50,M=PrePLinearSystemMM,callback=callback)
     print("STEP1 IterNum: ", iternum, "Precision: ", np.linalg.norm(PLinearSystem@P-Prhi))
     for l in range(d):
-        U[l] += (2*dt/3)*CFSolver(steadyNS.utils.CsrMulVec(C0transpose[l],P)-GradP0[l])
+        U[l] += (2*dt/3)*CFSolver(steadyNS.utils.CsrMulVec(C0transpose[l],P)+GradP0[l])
     return U,P
 
 #%% test pressure correction method step0, step1
